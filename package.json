@@ -1,0 +1,14 @@
+{
+  "name": "node-express-todo-app",
+  "version": "1.0.0",
+  "description": "A tiny Node.js + Express todo application",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
