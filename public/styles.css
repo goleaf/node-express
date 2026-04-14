@@ -1,6 +1,9 @@
 :root {
-  --color-bg: #edf2ff;
+  --font-body: 'Manrope', 'Inter', 'Avenir Next', 'Segoe UI', Roboto, sans-serif;
+  --color-bg: #f2f5ff;
   --color-surface: #ffffff;
+  --color-surface-soft: #f8faff;
+  --color-surface-muted: #f5f7ff;
   --color-border: #dbe4ff;
   --color-text: #12223a;
   --color-muted: #58647a;
@@ -16,11 +19,53 @@
   --color-warning-soft: #fef3c7;
   --color-error-soft: #fee2e2;
   --color-star: #f59e0b;
+  --color-muted-muted: #6b7280;
+  --color-on-primary: #ffffff;
+  --color-surface-text-mix: #ffffff;
+  --color-shadow: 38, 50, 79;
   --radius-sm: 0.5rem;
   --radius-md: 0.85rem;
   --radius-lg: 1rem;
-  --shadow-soft: 0 14px 30px rgba(38, 50, 79, 0.14);
+  --shadow-soft: 0 14px 30px rgba(var(--color-shadow), 0.14);
   --sheet-overlay: rgba(8, 14, 33, 0.42);
+  --bg-grad-start: #f8f9ff;
+  --bg-grad-end: #e8ecff;
+}
+
+:root,
+html[data-theme='light'],
+html[data-theme='system'][data-theme-mode='light'] {
+  color-scheme: light;
+}
+
+html[data-theme='dark'],
+html[data-theme-mode='dark'] {
+  color-scheme: dark;
+  --color-bg: #111827;
+  --color-surface: #1f2937;
+  --color-surface-soft: #1f2937;
+  --color-surface-muted: #374151;
+  --color-border: #374151;
+  --color-text: #f3f4f6;
+  --color-muted: #d1d5db;
+  --color-primary: #7aa2ff;
+  --color-primary-soft: rgba(122, 162, 255, 0.2);
+  --color-primary-text: #dbeafe;
+  --color-success: #4ade80;
+  --color-warning: #f59e0b;
+  --color-error: #f87171;
+  --color-info: #60a5fa;
+  --color-success-soft: rgba(74, 222, 128, 0.18);
+  --color-info-soft: rgba(96, 165, 250, 0.18);
+  --color-warning-soft: rgba(245, 158, 11, 0.2);
+  --color-error-soft: rgba(248, 113, 113, 0.2);
+  --color-star: #fbbf24;
+  --color-muted-muted: #9ca3af;
+  --color-surface-text-mix: #111827;
+  --color-shadow: 0, 0, 0;
+  --sheet-overlay: rgba(8, 14, 33, 0.6);
+  --bg-grad-start: #111827;
+  --bg-grad-end: #1e293b;
 }
 
 * {
@@ -30,8 +75,8 @@
 body {
   margin: 0;
   color: var(--color-text);
-  font-family: "Inter", "Avenir Next", "Segoe UI", Roboto, sans-serif;
-  background: radial-gradient(circle at 20% 20%, #f8f9ff 0%, var(--color-bg) 54%, #e8ecff 100%);
+  font-family: var(--font-body);
+  background: radial-gradient(circle at 20% 20%, var(--bg-grad-start) 0%, var(--color-bg) 54%, var(--bg-grad-end) 100%);
   min-height: 100vh;
 }
 
@@ -73,7 +118,7 @@ h1 {
 .app-nav a.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .surface {
@@ -121,7 +166,7 @@ h1 {
 
 .dashboard-kpi {
   border: 1px solid var(--color-border);
-  background: #f8faff;
+  background: var(--color-surface-soft);
   border-radius: var(--radius-md);
   padding: 10px;
   display: grid;
@@ -164,7 +209,7 @@ h1 {
   position: absolute;
   inset: 12px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--color-surface);
 }
 
 .doughnut-chart span {
@@ -240,7 +285,7 @@ h1 {
 .urgency-chip {
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
-  background: #fff;
+  background: var(--color-surface);
   padding: 10px;
   display: grid;
   gap: 4px;
@@ -256,22 +301,22 @@ h1 {
 
 .urgency-chip.urgency-success {
   border-color: color-mix(in srgb, var(--color-success) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-success-soft) 72%, white);
+  background: color-mix(in srgb, var(--color-success-soft) 72%, var(--color-surface-text-mix));
 }
 
 .urgency-chip.urgency-info {
   border-color: color-mix(in srgb, var(--color-info) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-info-soft) 74%, white);
+  background: color-mix(in srgb, var(--color-info-soft) 74%, var(--color-surface-text-mix));
 }
 
 .urgency-chip.urgency-warning {
   border-color: color-mix(in srgb, var(--color-warning) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-warning-soft) 72%, white);
+  background: color-mix(in srgb, var(--color-warning-soft) 72%, var(--color-surface-text-mix));
 }
 
 .urgency-chip.urgency-error {
   border-color: color-mix(in srgb, var(--color-error) 40%, var(--color-border));
-  background: color-mix(in srgb, var(--color-error-soft) 80%, white);
+  background: color-mix(in srgb, var(--color-error-soft) 80%, var(--color-surface-text-mix));
 }
 
 .heatmap-grid {
@@ -289,7 +334,7 @@ h1 {
   gap: 2px;
   justify-items: center;
   align-content: center;
-  background: #f8f9ff;
+  background: var(--color-surface-soft);
 }
 
 .heat-cell .weekday {
@@ -302,11 +347,11 @@ h1 {
   color: var(--color-text);
 }
 
-.heat-level-0 { background: color-mix(in srgb, #f8fafc 84%, white); }
-.heat-level-1 { background: color-mix(in srgb, #dbeafe 55%, white); }
-.heat-level-2 { background: color-mix(in srgb, #bfdbfe 60%, white); }
-.heat-level-3 { background: color-mix(in srgb, #93c5fd 64%, white); }
-.heat-level-4 { background: color-mix(in srgb, #60a5fa 70%, white); }
+.heat-level-0 { background: color-mix(in srgb, var(--color-surface-soft) 84%, var(--color-surface)); }
+.heat-level-1 { background: color-mix(in srgb, var(--color-info-soft) 55%, var(--color-surface)); }
+.heat-level-2 { background: color-mix(in srgb, var(--color-info-soft) 60%, var(--color-surface)); }
+.heat-level-3 { background: color-mix(in srgb, var(--color-info-soft) 64%, var(--color-surface)); }
+.heat-level-4 { background: color-mix(in srgb, var(--color-info) 70%, var(--color-surface)); }
 
 .activity-list {
   margin: 0;
@@ -320,7 +365,7 @@ h1 {
   border: 1px dashed var(--color-border);
   border-radius: var(--radius-md);
   padding: 9px 10px;
-  background: #f9fbff;
+  background: var(--color-surface-soft);
   display: grid;
   grid-template-columns: 28px 1fr;
   gap: 9px;
@@ -332,7 +377,7 @@ h1 {
   width: 28px;
   height: 28px;
   border-radius: 999px;
-  background: white;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
 }
 
@@ -344,7 +389,7 @@ h1 {
 
 .activity-time {
   font-size: 0.78rem;
-  color: #6b7280;
+  color: var(--color-muted-muted);
 }
 
 .composer,
@@ -368,7 +413,7 @@ h1 {
 
 .surface-title {
   margin: 0;
-  color: #1f2f50;
+  color: var(--color-text);
 }
 
 .stats {
@@ -388,7 +433,7 @@ h1 {
 .stats a.active {
   background: var(--color-primary);
   border-color: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .compose-form {
@@ -415,7 +460,7 @@ input[type='checkbox'] {
 .textarea {
   width: 100%;
   padding: 10px 11px;
-  background: #fff;
+  background: color-mix(in srgb, var(--color-surface) 84%, black 0%);
 }
 
 .textarea {
@@ -444,8 +489,8 @@ input[type='checkbox'] {
 }
 
 .search-highlight {
-  background: #fff2a8;
-  color: #1f2f55;
+  background: color-mix(in srgb, var(--color-warning-soft) 82%, var(--color-surface));
+  color: var(--color-text);
   padding: 1px 2px;
   border-radius: 0.25rem;
 }
@@ -453,7 +498,7 @@ input[type='checkbox'] {
 .notification-badge {
   margin-left: 6px;
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-on-primary);
   font-size: 0.75rem;
   border-radius: 999px;
   padding: 1px 8px;
@@ -472,7 +517,7 @@ input[type='checkbox'] {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 12px;
-  background: #fff;
+  background: var(--color-surface);
   display: grid;
   gap: 8px;
 }
@@ -507,7 +552,7 @@ input[type='checkbox'] {
 }
 
 .notification-meta {
-  color: #6b7280;
+  color: var(--color-muted-muted);
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -572,7 +617,7 @@ input[type='checkbox'] {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 10px;
-  background: #f8faff;
+  background: var(--color-surface-soft);
 }
 
 .notification-preference-form {
@@ -596,27 +641,27 @@ input[type='checkbox'] {
 .btn-primary,
 .btn-soft {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .btn-soft {
-  background: #dbe6ff;
+  background: var(--color-primary-soft);
   color: var(--color-primary-text);
 }
 
 .btn-outline {
-  background: #fff;
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   color: var(--color-primary);
 }
 
 .btn-danger {
   background: var(--color-error);
-  color: #fff;
+  color: var(--color-on-primary);
 }
 
 .btn-ghost {
-  background: #f6f7fb;
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
   border: 1px solid var(--color-border);
   color: var(--color-text);
 }
@@ -644,7 +689,7 @@ input[type='checkbox'] {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: 8px 10px;
-  background: #f8faff;
+  background: var(--color-surface-soft);
 }
 
 .filter-form,
@@ -682,7 +727,7 @@ input[type='checkbox'] {
   gap: 8px;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--color-surface);
   padding: 8px 10px;
 }
 
@@ -724,7 +769,7 @@ input[type='checkbox'] {
 
 .todo-item.is-done {
   border-color: color-mix(in srgb, var(--color-success) 34%, var(--color-border));
-  background: color-mix(in srgb, var(--color-success) 7%, white);
+  background: color-mix(in srgb, var(--color-success) 7%, var(--color-surface));
 }
 
 .todo-item.dragging {
@@ -766,7 +811,7 @@ input[type='checkbox'] {
   border: 1px solid var(--color-border);
   border-radius: 999px;
   padding: 4px 10px;
-  background: #f5f7ff;
+  background: color-mix(in srgb, var(--color-surface-muted) 70%, var(--color-surface));
 }
 
 .text-success {
@@ -806,14 +851,14 @@ input[type='checkbox'] {
 }
 
 .category-chip {
-  color: #0f172a;
-  background: color-mix(in srgb, var(--chip-color) 18%, white);
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--chip-color) 18%, var(--color-surface));
   border: 1px solid color-mix(in srgb, var(--chip-color) 45%, var(--color-border));
 }
 
 .star-btn {
   width: 42px;
-  color: #64748b;
+  color: var(--color-muted);
 }
 
 .star-btn.is-starred {
@@ -841,21 +886,21 @@ input[type='checkbox'] {
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, var(--color-primary), #0b5cd6);
+  background: linear-gradient(90deg, var(--color-primary), color-mix(in srgb, var(--color-primary) 78%, var(--color-info)));
   border-radius: 999px;
   transition: width 180ms ease;
 }
 
 .subtasks {
   margin-top: 12px;
-  border-top: 1px dashed #d6e0ff;
+  border-top: 1px dashed var(--color-border);
   padding-top: 10px;
 }
 
 .subtasks p {
   margin: 0 0 8px;
   font-size: 0.9rem;
-  color: #32456d;
+  color: var(--color-text);
 }
 
 .subtasks ul {
@@ -975,7 +1020,7 @@ input[type='checkbox'] {
 
 .help-text {
   margin: 10px 0 0;
-  color: #6b7280;
+  color: var(--color-muted-muted);
   font-size: 0.86rem;
 }
 
@@ -986,7 +1031,7 @@ input[type='checkbox'] {
 
 .task-group h3 {
   margin: 12px 0 8px;
-  color: #1f2f4c;
+  color: var(--color-text);
   font-size: 1.01rem;
   display: flex;
   justify-content: space-between;
@@ -994,7 +1039,7 @@ input[type='checkbox'] {
 }
 
 .task-group h3 span {
-  color: #63708a;
+  color: var(--color-muted);
   font-weight: 500;
 }
 
@@ -1010,12 +1055,12 @@ input[type='checkbox'] {
   padding: 6px 10px;
   color: var(--color-text);
   text-decoration: none;
-  background: #fff;
+  background: var(--color-surface);
   font-size: 0.86rem;
 }
 
 .tag-chip span {
-  color: #56627f;
+  color: var(--color-muted);
 }
 
 .tag-chip.active {
@@ -1025,7 +1070,7 @@ input[type='checkbox'] {
 }
 
 .card-tag-cloud {
-  background: linear-gradient(180deg, #ffffff 0%, #f8f9ff 100%);
+  background: linear-gradient(180deg, var(--color-surface) 0%, var(--color-surface-soft) 100%);
 }
 
 .todo-title {
@@ -1039,7 +1084,7 @@ input[type='checkbox'] {
 }
 
 .description-empty {
-  color: #94a0b7;
+  color: var(--color-muted);
   font-style: italic;
 }
 
@@ -1070,11 +1115,39 @@ input[type='checkbox'] {
   width: 100%;
 }
 
+.settings-form,
+.settings-export,
+.danger-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-export {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.danger-zone {
+  border-color: color-mix(in srgb, var(--color-error) 45%, var(--color-border));
+  background: color-mix(in srgb, var(--color-error-soft) 72%, var(--color-surface));
+}
+
+.danger-zone h2 {
+  color: var(--color-error);
+}
+
+.danger-actions {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.danger-actions .btn {
+  width: 100%;
+}
+
 .error-msg {
-  color: #b91c1c;
+  color: var(--color-error);
   font-weight: 600;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: color-mix(in srgb, var(--color-error-soft) 85%, var(--color-surface));
+  border: 1px solid color-mix(in srgb, var(--color-error) 40%, var(--color-border));
   border-radius: var(--radius-sm);
   padding: 10px 12px;
 }

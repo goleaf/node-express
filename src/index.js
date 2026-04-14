@@ -1087,6 +1087,7 @@ const loadStore = async () => {
       normalizedPresets,
       nextNotificationState.notifications,
       nextNotificationState.notificationPreferences,
+      appSettings,
     );
   }
 

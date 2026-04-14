@@ -78,6 +78,8 @@ Open `http://localhost:3000`.
 
 The file store lives at `data/todos.json`.
 
+The stylesheet is a lightweight token-based theme system inspired by the Sheaf UI direction (light/dark modes and semantic color tokens).
+
 ## Endpoints
 
 - `GET /` — main UI
@@ -85,6 +87,7 @@ The file store lives at `data/todos.json`.
 - `GET /trash` — trash UI (recover / hard delete)
 - `GET /categories` — category management screen
 - `GET /notifications` — notification center
+- `GET /settings` — appearance, defaults, preferences, export, danger actions
 - `GET /api/todos?includeDeleted=true|false` — list tasks (`false` default)
 - `GET /api/todos?smart=all|today|starred|completed|trash` — smart list filtering
 - `GET /api/todos/:id` — get task JSON
@@ -93,6 +96,10 @@ The file store lives at `data/todos.json`.
 - `POST /notifications/:id/read` — mark notification read/unread
 - `POST /notifications/read-all` — mark all notifications read
 - `POST /notifications/preferences` — update notification preferences
+- `POST /settings` — update theme, defaults, and notification settings
+- `GET /settings/export?format=json|csv` — download all active tasks as JSON/CSV
+- `POST /settings/account/delete` — reset all local data (delete account)
+- `POST /settings/onboarding/reset` — reset onboarding state
 - `POST /todos/:id/edit` — update task from UI (form)
 - `POST /todos/:id/delete` — move task to trash
 - `POST /todos/:id/recover` — recover trashed task
