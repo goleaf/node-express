@@ -17,6 +17,72 @@ const PRIORITY_OPTIONS = [
   { value: 'high', label: 'High', token: 'warning' },
   { value: 'urgent', label: 'Urgent', token: 'error' },
 ];
+const NOTIFICATION_TYPES = {
+  dueSoon: 'due-soon',
+  overdue: 'overdue',
+  reminder: 'reminder',
+  system: 'system',
+};
+const NOTIFICATION_TYPE_LABELS = {
+  [NOTIFICATION_TYPES.dueSoon]: 'Due Soon',
+  [NOTIFICATION_TYPES.overdue]: 'Overdue',
+  [NOTIFICATION_TYPES.reminder]: 'Reminder',
+  [NOTIFICATION_TYPES.system]: 'System',
+};
+const NOTIFICATION_TYPE_TOKENS = {
+  [NOTIFICATION_TYPES.dueSoon]: 'info',
+  [NOTIFICATION_TYPES.overdue]: 'error',
+  [NOTIFICATION_TYPES.reminder]: 'warning',
+  [NOTIFICATION_TYPES.system]: 'success',
+};
+const NOTIFICATION_TYPE_KEYS = Object.keys(NOTIFICATION_TYPE_LABELS);
+const NOTIFICATION_TYPES_FOR_LOOP = Object.values(NOTIFICATION_TYPES);
+const THEME_OPTIONS = [
+  { value: 'light', label: 'Light' },
+  { value: 'dark', label: 'Dark' },
+  { value: 'system', label: 'System' },
+];
+const DUE_SOON_WINDOW_MS = 24 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+const QUIET_HOURS_DEFAULT = {
+  enabled: false,
+  start: '22:00',
+  end: '07:00',
+};
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const OVERDUE_BUCKETS = [
+  { key: 'critical', label: 'Urgent (7+ days)', minDays: 7, maxDays: Infinity, className: 'error' },
+  { key: 'high', label: 'High (3-6 days)', minDays: 3, maxDays: 6, className: 'warning' },
+  { key: 'medium', label: 'Moderate (1-2 days)', minDays: 1, maxDays: 2, className: 'info' },
+  { key: 'low', label: 'Just overdue', minDays: 0, maxDays: 0.99, className: 'success' },
+];
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  types: {
+    [NOTIFICATION_TYPES.dueSoon]: true,
+    [NOTIFICATION_TYPES.overdue]: true,
+    [NOTIFICATION_TYPES.reminder]: true,
+    [NOTIFICATION_TYPES.system]: true,
+  },
+  categories: {
+    [NOTIFICATION_TYPES.dueSoon]: true,
+    [NOTIFICATION_TYPES.overdue]: true,
+    [NOTIFICATION_TYPES.reminder]: true,
+    [NOTIFICATION_TYPES.system]: true,
+  },
+  quietHours: {
+    ...QUIET_HOURS_DEFAULT,
+  },
+};
+const DEFAULT_APP_SETTINGS = {
+  theme: 'system',
+  defaults: {
+    newTaskPriority: 'medium',
+    defaultSort: 'position',
+  },
+  onboarding: {
+    completed: false,
+  },
+};
 
 const RECOVERY_WINDOW_DAYS = 30;
 const RECOVERY_WINDOW_MS = RECOVERY_WINDOW_DAYS * 24 * 60 * 60 * 1000;
@@ -118,12 +184,145 @@ const parseBoolean = (value, defaultValue = false) => {
   return defaultValue;
 };
 
+const normalizeTime = (value, fallback = '00:00') => {
+  const raw = String(value || '').trim();
+  const match = /^([01]?\d|2[0-3]):([0-5]\d)$/.exec(raw);
+  if (!match) {
+    return fallback;
+  }
+  const hours = Number.parseInt(match[1], 10);
+  const minutes = Number.parseInt(match[2], 10);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
+const normalizeNotificationPreferences = (preferences = {}) => {
+  const types = preferences?.types || {};
+  const categories = preferences?.categories || {};
+  const quietHours = preferences?.quietHours || {};
+
+  return {
+    types: {
+      [NOTIFICATION_TYPES.dueSoon]: parseBoolean(types[NOTIFICATION_TYPES.dueSoon], true),
+      [NOTIFICATION_TYPES.overdue]: parseBoolean(types[NOTIFICATION_TYPES.overdue], true),
+      [NOTIFICATION_TYPES.reminder]: parseBoolean(types[NOTIFICATION_TYPES.reminder], true),
+      [NOTIFICATION_TYPES.system]: parseBoolean(types[NOTIFICATION_TYPES.system], true),
+    },
+    categories: {
+      [NOTIFICATION_TYPES.dueSoon]: parseBoolean(categories[NOTIFICATION_TYPES.dueSoon], true),
+      [NOTIFICATION_TYPES.overdue]: parseBoolean(categories[NOTIFICATION_TYPES.overdue], true),
+      [NOTIFICATION_TYPES.reminder]: parseBoolean(categories[NOTIFICATION_TYPES.reminder], true),
+      [NOTIFICATION_TYPES.system]: parseBoolean(categories[NOTIFICATION_TYPES.system], true),
+    },
+    quietHours: {
+      enabled: parseBoolean(quietHours.enabled, false),
+      start: normalizeTime(quietHours.start, QUIET_HOURS_DEFAULT.start),
+      end: normalizeTime(quietHours.end, QUIET_HOURS_DEFAULT.end),
+    },
+  };
+};
+
+const normalizeNotificationFieldName = (prefix, type) => {
+  return `${prefix}_${type.replace('-', '_')}`;
+};
+
+const parseNotificationPreferencesForm = (body = {}) => {
+  return {
+    types: {
+      [NOTIFICATION_TYPES.dueSoon]: parseBoolean(
+        body[normalizeNotificationFieldName('type', NOTIFICATION_TYPES.dueSoon)],
+        false,
+      ),
+      [NOTIFICATION_TYPES.overdue]: parseBoolean(
+        body[normalizeNotificationFieldName('type', NOTIFICATION_TYPES.overdue)],
+        false,
+      ),
+      [NOTIFICATION_TYPES.reminder]: parseBoolean(
+        body[normalizeNotificationFieldName('type', NOTIFICATION_TYPES.reminder)],
+        false,
+      ),
+      [NOTIFICATION_TYPES.system]: parseBoolean(
+        body[normalizeNotificationFieldName('type', NOTIFICATION_TYPES.system)],
+        false,
+      ),
+    },
+    categories: {
+      [NOTIFICATION_TYPES.dueSoon]: parseBoolean(
+        body[normalizeNotificationFieldName('category', NOTIFICATION_TYPES.dueSoon)],
+        false,
+      ),
+      [NOTIFICATION_TYPES.overdue]: parseBoolean(
+        body[normalizeNotificationFieldName('category', NOTIFICATION_TYPES.overdue)],
+        false,
+      ),
+      [NOTIFICATION_TYPES.reminder]: parseBoolean(
+        body[normalizeNotificationFieldName('category', NOTIFICATION_TYPES.reminder)],
+        false,
+      ),
+      [NOTIFICATION_TYPES.system]: parseBoolean(
+        body[normalizeNotificationFieldName('category', NOTIFICATION_TYPES.system)],
+        false,
+      ),
+    },
+    quietHours: {
+      enabled: parseBoolean(body.quietHoursEnabled, false),
+      start: normalizeTime(body.quietStart, QUIET_HOURS_DEFAULT.start),
+      end: normalizeTime(body.quietEnd, QUIET_HOURS_DEFAULT.end),
+    },
+  };
+};
+
+const minutesFromTime = (time = '00:00') => {
+  const [hours, minutes] = normalizeTime(time, '00:00').split(':');
+  return Number.parseInt(hours, 10) * 60 + Number.parseInt(minutes, 10);
+};
+
+const isInQuietHours = (timestampMs = Date.now(), quietHours = QUIET_HOURS_DEFAULT) => {
+  if (!quietHours?.enabled) {
+    return false;
+  }
+  const now = new Date(timestampMs);
+  const minuteOfDay = now.getHours() * 60 + now.getMinutes();
+  const start = minutesFromTime(quietHours.start);
+  const end = minutesFromTime(quietHours.end);
+
+  if (start === end) {
+    return false;
+  }
+  if (start < end) {
+    return minuteOfDay >= start && minuteOfDay < end;
+  }
+  return minuteOfDay >= start || minuteOfDay < end;
+};
+
+const formatReadableDate = (value) => {
+  if (!value) {
+    return 'Unknown';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Invalid date';
+  }
+  return parsed.toLocaleString();
+};
+
+const toInputDateTime = (value) => {
+  if (!value) {
+    return '';
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  const offsetMs = parsed.getTimezoneOffset() * 60 * 1000;
+  return new Date(parsed.getTime() - offsetMs).toISOString().slice(0, 16);
+};
+
 const escapeRegExp = (value) => {
   return String(value).replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
-const normalizeSort = (value) => {
-  const sort = String(value || 'position').trim().toLowerCase();
+const normalizeSort = (value, fallback = 'position') => {
+  const sort = String(value || fallback).trim().toLowerCase();
   return SORT_OPTIONS.some((option) => option.value === sort) ? sort : 'position';
 };
 
@@ -142,6 +341,18 @@ const normalizeDateFilter = (value) => {
   }
   const parsed = new Date(raw);
   return Number.isNaN(parsed.getTime()) ? '' : raw;
+};
+
+const normalizeReminderAt = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) {
+    return '';
+  }
+  const parsed = new Date(raw);
+  if (Number.isNaN(parsed.getTime())) {
+    return '';
+  }
+  return raw;
 };
 
 const parseDateBoundary = (value, atEnd = false) => {
@@ -168,7 +379,39 @@ const toDateMillis = (value) => {
   return parsed.getTime();
 };
 
-const normalizeFilterFromSource = (source, categories = [], presets = []) => {
+const startOfDay = (value = new Date()) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date();
+  }
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const endOfDay = (value = new Date()) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date(new Date().setHours(23, 59, 59, 999));
+  }
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+const startOfWeek = (value = new Date()) => {
+  const date = startOfDay(value);
+  const dayIndex = (date.getDay() + 6) % 7;
+  date.setDate(date.getDate() - dayIndex);
+  return date;
+};
+
+const startOfMonth = (value = new Date()) => {
+  const date = startOfDay(value);
+  date.setDate(1);
+  return date;
+};
+
+const normalizeFilterFromSource = (source, categories = [], presets = [], appSettings = DEFAULT_APP_SETTINGS) => {
+  const effectiveSettings = normalizeAppSettings(appSettings);
   const payload = source?.filters ? source.filters : source;
   const presetId = parseId(payload?.presetId);
   const matchedPreset =
@@ -206,7 +449,7 @@ const normalizeFilterFromSource = (source, categories = [], presets = []) => {
     tags,
     dueFrom: fromToDateOk ? dueFrom : '',
     dueTo: fromToDateOk ? dueTo : '',
-    sort: normalizeSort(merged.sort),
+    sort: normalizeSort(merged.sort, effectiveSettings.defaults.defaultSort),
     presetId,
     smartSource: merged.smart || null,
   };
@@ -389,6 +632,7 @@ const INITIAL_TODO = {
   description: 'Edit this task or add a new one.',
   completed: false,
   dueAt: '',
+  reminderAt: '',
   priority: 'medium',
   categoryId: DEFAULT_CATEGORIES[0].id,
   tags: ['setup'],
@@ -404,6 +648,7 @@ const INITIAL_TODO = {
     },
   ],
   deletedAt: null,
+  completedAt: null,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 };
@@ -413,6 +658,8 @@ const normalizeTodo = (todo = {}, categories = []) => {
   const createdAt = String(todo.createdAt || new Date().toISOString());
   const updatedAt = String(todo.updatedAt || createdAt);
   const priority = PRIORITY_MAP[String(todo.priority)] ? String(todo.priority) : 'medium';
+  const completed = Boolean(todo.completed);
+  const completedAtRaw = String(todo.completedAt || '').trim();
   const categoryId = resolveCategoryId(
     todo.categoryId ?? todo.categoryId?.toString() ?? todo.category,
     categories,
@@ -423,8 +670,9 @@ const normalizeTodo = (todo = {}, categories = []) => {
     id: parseId(todo.id) || 0,
     title: String(todo.title || '').trim(),
     description: String(todo.description || '').trim(),
-    completed: Boolean(todo.completed),
+    completed,
     dueAt: String(todo.dueAt || '').trim(),
+    reminderAt: normalizeReminderAt(todo.reminderAt),
     priority,
     categoryId,
     tags: parseTags(todo.tags),
@@ -432,12 +680,193 @@ const normalizeTodo = (todo = {}, categories = []) => {
     position: Number.isFinite(Number(todo.position)) ? Number(todo.position) : null,
     subtasks,
     deletedAt: todo.deletedAt ? String(todo.deletedAt) : null,
+    completedAt:
+      completed && completedAtRaw ? completedAtRaw : completed && !completedAtRaw ? String(updatedAt) : null,
     createdAt,
     updatedAt,
   };
 };
 
-const writeStore = async (tasks, categories, filterPresets = []) => {
+const normalizeNotification = (notification = {}, existingIds = new Set()) => {
+  const existing = [...existingIds];
+  const id = parseId(notification.id) || nextNotificationId(existing);
+  existingIds.add(id);
+  const type = NOTIFICATION_TYPE_KEYS.includes(String(notification.type)) ? String(notification.type) : NOTIFICATION_TYPES.system;
+  const taskId = parseId(notification.taskId);
+  const createdAt = String(notification.createdAt || new Date().toISOString());
+  const readAt = notification.readAt ? String(notification.readAt) : null;
+
+  return {
+    id,
+    type,
+    title: String(notification.title || '').trim() || 'Notification',
+    message: String(notification.message || '').trim() || 'No message',
+    taskId: taskId || null,
+    read: parseBoolean(notification.read, false),
+    createdAt,
+    updatedAt: String(notification.updatedAt || createdAt),
+    readAt: notification.read ? readAt || new Date().toISOString() : null,
+    source: String(notification.source || `${type}:${taskId || `system-${id}`}`).trim(),
+  };
+};
+
+const nextNotificationId = (notifications = []) => {
+  const ids = notifications.map((id) => parseId(id)).filter(Boolean);
+  return ids.length ? Math.max(...ids) + 1 : 1;
+};
+
+const notificationPayloadForTask = (type, todo) => {
+  if (type === NOTIFICATION_TYPES.dueSoon) {
+    return {
+      title: `Task due soon: ${todo.title}`,
+      message: `"${todo.title}" is due at ${formatReadableDate(todo.dueAt)}.`,
+    };
+  }
+  if (type === NOTIFICATION_TYPES.overdue) {
+    return {
+      title: `Task overdue: ${todo.title}`,
+      message: `"${todo.title}" was due at ${formatReadableDate(todo.dueAt)}.`,
+    };
+  }
+  return {
+    title: `Reminder: ${todo.title}`,
+    message: `Reminder for "${todo.title}" has triggered.`,
+  };
+};
+
+const generateNotificationCandidates = (todos, now = Date.now()) => {
+  const activeTodos = getActiveTodos(todos).filter((todo) => !todo.completed);
+  const dueSoonAt = now + DUE_SOON_WINDOW_MS;
+
+  return activeTodos.flatMap((todo) => {
+    const dueAt = toDateMillis(todo.dueAt);
+    const reminderAt = toDateMillis(todo.reminderAt);
+    const candidates = [];
+
+    if (dueAt !== null && dueAt > now && dueAt <= dueSoonAt) {
+      candidates.push({
+        type: NOTIFICATION_TYPES.dueSoon,
+        taskId: todo.id,
+        source: `due-soon:${todo.id}`,
+        ...notificationPayloadForTask(NOTIFICATION_TYPES.dueSoon, todo),
+      });
+    }
+
+    if (dueAt !== null && dueAt <= now) {
+      candidates.push({
+        type: NOTIFICATION_TYPES.overdue,
+        taskId: todo.id,
+        source: `overdue:${todo.id}`,
+        ...notificationPayloadForTask(NOTIFICATION_TYPES.overdue, todo),
+      });
+    }
+
+    if (reminderAt !== null && reminderAt <= now) {
+      candidates.push({
+        type: NOTIFICATION_TYPES.reminder,
+        taskId: todo.id,
+        source: `reminder:${todo.id}`,
+        ...notificationPayloadForTask(NOTIFICATION_TYPES.reminder, todo),
+      });
+    }
+
+    return candidates;
+  });
+};
+
+const reconcileNotifications = (todos, notifications = [], notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES) => {
+  const prefs = normalizeNotificationPreferences(notificationPreferences);
+  const now = Date.now();
+  const inQuietHours = isInQuietHours(now, prefs.quietHours);
+  const normalizedIds = new Set();
+  const normalizedNotifications = [];
+
+  for (const notification of notifications) {
+    const normalized = normalizeNotification(notification, normalizedIds);
+    if (normalized.read === false || !normalized.read) {
+      normalized.read = false;
+      normalized.readAt = null;
+    }
+    normalizedNotifications.push(normalized);
+  }
+
+  const existingBySource = Object.fromEntries(
+    normalizedNotifications.map((notification) => [notification.source, notification]),
+  );
+
+  for (const candidate of generateNotificationCandidates(todos, now)) {
+    if (!prefs.types[candidate.type] || !prefs.categories[candidate.type] || inQuietHours) {
+      continue;
+    }
+    const key = candidate.source;
+    const exists = existingBySource[key];
+
+    if (exists) {
+      if (exists.read) {
+        continue;
+      }
+      continue;
+    }
+
+    normalizedNotifications.push(
+      normalizeNotification(
+        {
+          ...candidate,
+          read: false,
+          updatedAt: new Date().toISOString(),
+        },
+        normalizedIds,
+      ),
+    );
+  }
+
+  return {
+    notificationPreferences: prefs,
+    notifications: normalizedNotifications
+      .map((notification) => ({ ...notification }))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : a.createdAt > b.createdAt ? -1 : a.id - b.id)),
+  };
+};
+
+const visibleNotifications = (notifications = [], preferences = null) => {
+  const prefs = normalizeNotificationPreferences(preferences);
+  return (Array.isArray(notifications) ? notifications : []).filter(
+    (notification) => prefs.types[notification.type] !== false && prefs.categories[notification.type] !== false,
+  );
+};
+
+const unreadNotificationCount = (notifications = [], preferences = null) => {
+  const filtered = visibleNotifications(notifications, preferences);
+  return filtered.filter((notification) => !notification.read).length;
+};
+
+const getStoredRuntimeStateFromStore = async () => {
+  try {
+    const raw = await fs.readFile(DATA_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    const migrated = migrateOldFormatIfNeeded(parsed);
+    return {
+      notifications: Array.isArray(migrated.notifications) ? migrated.notifications : [],
+      notificationPreferences: normalizeNotificationPreferences(migrated.notificationPreferences),
+      appSettings: normalizeAppSettings(migrated.appSettings || {}),
+    };
+  } catch (_error) {
+    return {
+      notifications: [],
+      notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
+      appSettings: normalizeAppSettings(DEFAULT_APP_SETTINGS),
+    };
+  }
+};
+
+const writeStore = async (
+  tasks,
+  categories,
+  filterPresets = [],
+  notifications = null,
+  notificationPreferences = null,
+  appSettings = null,
+) => {
   const nextCategories = normalizeAndDeduplicateCategories(categories);
   const usedIds = new Set();
   const nextPresets = Array.isArray(filterPresets)
@@ -460,6 +889,22 @@ const writeStore = async (tasks, categories, filterPresets = []) => {
         })
         .sort((a, b) => (a.updatedAt > b.updatedAt ? -1 : a.updatedAt < b.updatedAt ? 1 : a.id - b.id))
     : [];
+
+  const fallbackNotificationState = await getStoredRuntimeStateFromStore();
+  const currentNotifications =
+    notifications === null ? fallbackNotificationState.notifications : Array.isArray(notifications) ? notifications : [];
+  const currentPreferences =
+    notificationPreferences === null
+      ? fallbackNotificationState.notificationPreferences
+      : normalizeNotificationPreferences(notificationPreferences);
+  const currentAppSettings = appSettings === null ? fallbackNotificationState.appSettings : normalizeAppSettings(appSettings);
+
+  const { notifications: reconciledNotifications, notificationPreferences: reconciledPreferences } = reconcileNotifications(
+    tasks,
+    currentNotifications,
+    currentPreferences,
+  );
+
   await fs.writeFile(
     DATA_FILE,
     JSON.stringify(
@@ -467,6 +912,9 @@ const writeStore = async (tasks, categories, filterPresets = []) => {
         todos: tasks,
         categories: nextCategories,
         filterPresets: nextPresets,
+        notifications: reconciledNotifications,
+        notificationPreferences: reconciledPreferences,
+        appSettings: currentAppSettings,
         updatedAt: new Date().toISOString(),
       },
       null,
@@ -484,7 +932,19 @@ const ensureDataFile = async () => {
   }
   if (!existsSync(DATA_FILE)) {
     const categories = normalizeAndDeduplicateCategories(DEFAULT_CATEGORIES);
-    await writeStore([normalizeTodo(INITIAL_TODO, categories)], categories);
+    const nextNotificationState = reconcileNotifications(
+      [normalizeTodo(INITIAL_TODO, categories)],
+      [],
+      DEFAULT_NOTIFICATION_PREFERENCES,
+    );
+    await writeStore(
+      [normalizeTodo(INITIAL_TODO, categories)],
+      categories,
+      [],
+      nextNotificationState.notifications,
+      nextNotificationState.notificationPreferences,
+      DEFAULT_APP_SETTINGS,
+    );
     return;
   }
 
@@ -498,6 +958,9 @@ const migrateOldFormatIfNeeded = (parsed) => {
       categories,
       todos: parsed.map((todo) => normalizeTodo(todo, categories)),
       filterPresets: [],
+      notifications: [],
+      notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
+      appSettings: normalizeAppSettings(DEFAULT_APP_SETTINGS),
     };
   }
 
@@ -529,6 +992,16 @@ const migrateOldFormatIfNeeded = (parsed) => {
           })
           .sort(presetLatest)
       : [],
+    notifications: Array.isArray(parsed?.notifications)
+      ? (() => {
+          const seen = new Set();
+          return parsed.notifications
+            .map((notification) => normalizeNotification(notification, seen))
+            .sort((a, b) => (a.createdAt > b.createdAt ? -1 : a.createdAt < b.createdAt ? 1 : a.id - b.id));
+        })()
+      : [],
+    notificationPreferences: normalizeNotificationPreferences(parsed?.notificationPreferences),
+    appSettings: normalizeAppSettings(parsed?.appSettings),
   };
 };
 
@@ -547,10 +1020,18 @@ const purgeExpiredTrash = (todos) => {
 const loadStore = async () => {
   const raw = await fs.readFile(DATA_FILE, 'utf-8');
   const parsed = JSON.parse(raw);
-  const { categories, todos: normalizedTodos, filterPresets = [] } = migrateOldFormatIfNeeded(parsed);
+  const {
+    categories,
+    todos: normalizedTodos,
+    filterPresets = [],
+    notifications = [],
+    notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+    appSettings = DEFAULT_APP_SETTINGS,
+  } = migrateOldFormatIfNeeded(parsed);
   const deduplicatedCategories = normalizeAndDeduplicateCategories(categories);
   const normalized = normalizedTodos.map((todo) => normalizeTodo(todo, deduplicatedCategories));
   const cleaned = purgeExpiredTrash(normalized);
+  const nextNotificationState = reconcileNotifications(cleaned, notifications, notificationPreferences);
   const normalizedPresets = filterPresets
     .map((preset, index) => {
       const normalized = normalizeFilterFromSource(preset?.filters || preset, deduplicatedCategories, []);
@@ -575,14 +1056,29 @@ const loadStore = async () => {
     })
     .filter((preset) => Boolean(preset.id));
 
-  if (cleaned.length !== normalized.length || normalized.some((todo) => todo.id === 0)) {
-    await writeStore(cleaned, deduplicatedCategories, normalizedPresets);
+  const notificationSignature = JSON.stringify(notifications);
+  const reconciledNotificationSignature = JSON.stringify(nextNotificationState.notifications);
+  if (
+    cleaned.length !== normalized.length ||
+    normalized.some((todo) => todo.id === 0) ||
+    notificationSignature !== reconciledNotificationSignature
+  ) {
+    await writeStore(
+      cleaned,
+      deduplicatedCategories,
+      normalizedPresets,
+      nextNotificationState.notifications,
+      nextNotificationState.notificationPreferences,
+    );
   }
 
   return {
     todos: cleaned,
     categories: deduplicatedCategories,
     filterPresets: normalizedPresets,
+    notifications: nextNotificationState.notifications,
+    notificationPreferences: nextNotificationState.notificationPreferences,
+    appSettings: normalizeAppSettings(appSettings),
   };
 };
 
@@ -590,7 +1086,14 @@ const ensureStoreShape = async () => {
   try {
     const current = JSON.parse(await fs.readFile(DATA_FILE, 'utf-8'));
     const normalized = migrateOldFormatIfNeeded(current);
-    await writeStore(normalized.todos, normalized.categories, normalized.filterPresets);
+    const nextNotificationState = reconcileNotifications(normalized.todos, normalized.notifications, normalized.notificationPreferences);
+    await writeStore(
+      normalized.todos,
+      normalized.categories,
+      normalized.filterPresets,
+      nextNotificationState.notifications,
+      nextNotificationState.notificationPreferences,
+    );
   } catch (error) {
     if (error.code !== 'ENOENT') {
       throw error;
@@ -821,6 +1324,288 @@ const subtaskProgressText = (subtasks = []) => {
   return `${done}/${total} subtasks complete`;
 };
 
+const completionRateInWindow = (todos, from, to) => {
+  const start = toDateMillis(from) || startOfDay(new Date()).getTime();
+  const end = toDateMillis(to) || endOfDay(new Date()).getTime();
+  let total = 0;
+  let completed = 0;
+
+  for (const todo of todos) {
+    const createdAt = toDateMillis(todo.createdAt);
+    if (createdAt === null) {
+      continue;
+    }
+    if (createdAt < start || createdAt > end) {
+      continue;
+    }
+    total += 1;
+    if (todo.completed && toDateMillis(todo.completedAt) !== null && toDateMillis(todo.completedAt) >= start && toDateMillis(todo.completedAt) <= end) {
+      completed += 1;
+    }
+  }
+
+  return {
+    total,
+    completed,
+    percent: total === 0 ? 0 : Math.round((completed / total) * 100),
+  };
+};
+
+const buildPriorityDistribution = (todos) => {
+  const counts = Object.fromEntries(PRIORITY_OPTIONS.map((item) => [item.value, 0]));
+  let max = 0;
+
+  for (const todo of todos) {
+    const value = counts[todo.priority] >= 0 ? todo.priority : 'medium';
+    counts[value] = (counts[value] || 0) + 1;
+    if (counts[value] > max) {
+      max = counts[value];
+    }
+  }
+
+  return PRIORITY_OPTIONS.map((item) => ({
+    ...item,
+    count: counts[item.value] || 0,
+    percent: max === 0 ? 0 : Math.round((counts[item.value] / max) * 100),
+  }));
+};
+
+const buildOverdueBuckets = (todos) => {
+  const now = Date.now();
+  const buckets = OVERDUE_BUCKETS.map((bucket) => ({ ...bucket, count: 0 }));
+
+  for (const todo of todos) {
+    if (todo.completed || todo.deletedAt) {
+      continue;
+    }
+    const dueAt = toDateMillis(todo.dueAt);
+    if (dueAt === null || dueAt > now) {
+      continue;
+    }
+    const overdueDays = (now - dueAt) / DAY_MS;
+    const bucket = buckets.find((item) => overdueDays >= item.minDays && overdueDays < item.maxDays);
+    if (bucket) {
+      bucket.count += 1;
+    }
+  }
+
+  const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0);
+  return {
+    total,
+    buckets,
+  };
+};
+
+const completionStreakDays = (todos, referenceDate = new Date()) => {
+  let streak = 0;
+  let current = startOfDay(referenceDate);
+
+  while (streak < 365) {
+    const start = current;
+    const end = endOfDay(current);
+    const hasCompletion = todos.some((todo) => {
+      const completedAt = toDateMillis(todo.completedAt);
+      return completedAt !== null && completedAt >= start.getTime() && completedAt <= end.getTime();
+    });
+    if (!hasCompletion) {
+      break;
+    }
+    streak += 1;
+    current = new Date(current);
+    current.setDate(current.getDate() - 1);
+  }
+
+  return streak;
+};
+
+const buildHeatmapData = (todos, referenceDate = new Date()) => {
+  const start = new Date(referenceDate);
+  start.setDate(start.getDate() - 34);
+  const rows = Array.from({ length: 7 }, () => 0);
+  let max = 0;
+
+  for (const todo of todos) {
+    if (!todo.completed) {
+      continue;
+    }
+    const completedAt = toDateMillis(todo.completedAt);
+    if (completedAt === null || completedAt < start.getTime()) {
+      continue;
+    }
+    const bucketIndex = (new Date(completedAt).getDay() + 6) % 7;
+    rows[bucketIndex] += 1;
+    if (rows[bucketIndex] > max) {
+      max = rows[bucketIndex];
+    }
+  }
+
+  return {
+    labels: WEEKDAY_LABELS,
+    data: rows.map((count) => count),
+    max: Math.max(max, 1),
+  };
+};
+
+const buildRecentActivity = (todos, notifications = [], limit = 12) => {
+  const entries = [];
+
+  for (const todo of todos) {
+    if (todo.createdAt) {
+      entries.push({
+        id: `${todo.id}-created`,
+        time: toDateMillis(todo.createdAt),
+        icon: '📝',
+        title: 'Created task',
+        detail: todo.title,
+      });
+    }
+    if (todo.updatedAt && todo.updatedAt !== todo.createdAt) {
+      entries.push({
+        id: `${todo.id}-updated`,
+        time: toDateMillis(todo.updatedAt),
+        icon: '✏️',
+        title: 'Updated task',
+        detail: todo.title,
+      });
+    }
+    if (todo.completed && todo.completedAt) {
+      entries.push({
+        id: `${todo.id}-completed`,
+        time: toDateMillis(todo.completedAt),
+        icon: '✅',
+        title: 'Completed task',
+        detail: todo.title,
+      });
+    }
+  }
+
+  for (const notification of notifications) {
+    const createdAt = toDateMillis(notification.createdAt);
+    if (!createdAt) {
+      continue;
+    }
+    entries.push({
+      id: `notification-${notification.id}`,
+      time: createdAt,
+      icon: '🔔',
+      title: notification.title,
+      detail: notification.message,
+    });
+  }
+
+  return entries
+    .filter((entry) => entry.time !== null)
+    .sort((a, b) => b.time - a.time)
+    .slice(0, limit);
+};
+
+const buildDashboardStats = (todos, notifications = []) => {
+  const active = getActiveTodos(todos);
+  const now = new Date();
+
+  const todayStart = startOfDay(now);
+  const weekStart = startOfWeek(now);
+  const monthStart = startOfMonth(now);
+
+  return {
+    completionRates: {
+      today: {
+        label: 'Today',
+        ...completionRateInWindow(active, todayStart, endOfDay(todayStart)),
+      },
+      week: {
+        label: 'This Week',
+        ...completionRateInWindow(active, weekStart, endOfDay(now)),
+      },
+      month: {
+        label: 'This Month',
+        ...completionRateInWindow(active, monthStart, endOfDay(now)),
+      },
+    },
+    priorityDistribution: buildPriorityDistribution(active),
+    overdue: buildOverdueBuckets(active),
+    streakDays: completionStreakDays(active, now),
+    heatmap: buildHeatmapData(active, now),
+    recentActivity: buildRecentActivity(active, notifications, 12),
+    counts: {
+      total: active.length,
+      completed: active.filter((todo) => todo.completed).length,
+    },
+  };
+};
+
+const renderTopNav = (unreadCount = 0, active = 'tasks') => {
+  return `
+    <nav class="app-nav">
+      <a href="/"${active === 'tasks' ? ' class="active"' : ''}>Tasks</a>
+      <a href="/dashboard"${active === 'dashboard' ? ' class="active"' : ''}>Dashboard</a>
+      ${renderNotificationBadge(unreadCount, active === 'notifications')}
+      <a href="/categories"${active === 'categories' ? ' class="active"' : ''}>Categories</a>
+      <a href="/settings"${active === 'settings' ? ' class="active"' : ''}>Settings</a>
+    </nav>
+  `;
+};
+
+const renderThemeBootstrap = (appSettings = DEFAULT_APP_SETTINGS) => {
+  const mode = normalizeThemeMode(appSettings.theme);
+  return `
+    <script>
+      (function() {
+        const html = document.documentElement;
+        const applyThemeMode = (themeMode) => {
+          const fallback = '${mode}';
+          const normalized = String(themeMode || fallback);
+          const resolved =
+            normalized === 'dark'
+              ? 'dark'
+              : normalized === 'light'
+                ? 'light'
+                : window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+                  ? 'dark'
+                  : 'light';
+          html.setAttribute('data-theme', resolved);
+          html.setAttribute('data-theme-mode', normalized);
+        };
+        const media = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        const sync = () => {
+          const currentMode = html.dataset.themeMode || '${mode}';
+          applyThemeMode(currentMode);
+        };
+        window.__todoTheme = {
+          applyThemeMode: (nextMode) => {
+            applyThemeMode(nextMode || '${mode}');
+          },
+          sync,
+        };
+        applyThemeMode('${mode}');
+        if (media?.addEventListener) {
+          media.addEventListener('change', () => {
+            if ((html.dataset.themeMode || '${mode}') === 'system') {
+              applyThemeMode('system');
+            }
+          });
+        }
+      })();
+    </script>
+  `;
+};
+
+const completionRateCards = (rates) => {
+  const items = Object.values(rates)
+    .map((item) => `
+      <article class="dashboard-kpi">
+        <h4>${escapeHtml(item.label)}</h4>
+        <div class="doughnut-chart" style="--completion-rate: ${item.percent}%;">
+          <span>${item.percent}%</span>
+        </div>
+        <p class="kpi-meta">${item.completed}/${item.total} completed</p>
+      </article>
+    `)
+    .join('');
+
+  return `<section class="dashboard-completion-grid">${items}</section>`;
+};
+
 const smartParam = (value) => {
   if (!value) {
     return 'all';
@@ -867,7 +1652,33 @@ const applySmartFilter = (todos, smart, statusFilter = 'all') => {
 };
 
 const normalizePriority = (value) => {
-  return PRIORITY_MAP[String(value)] ? String(value) : 'medium';
+  const normalized = String(value || '').trim();
+  return PRIORITY_MAP[normalized] ? normalized : 'medium';
+};
+
+const normalizeThemeMode = (value) => {
+  const mode = String(value || 'system').trim().toLowerCase();
+  return THEME_OPTIONS.some((option) => option.value === mode) ? mode : 'system';
+};
+
+const normalizeExportFormat = (value) => {
+  return String(value || 'json').trim().toLowerCase() === 'csv' ? 'csv' : 'json';
+};
+
+const normalizeAppSettings = (settings = {}) => {
+  const defaults = settings?.defaults || {};
+  const onboarding = settings?.onboarding || {};
+
+  return {
+    theme: normalizeThemeMode(settings?.theme),
+    defaults: {
+      newTaskPriority: normalizePriority(defaults.newTaskPriority),
+      defaultSort: normalizeSort(defaults.defaultSort),
+    },
+    onboarding: {
+      completed: parseBoolean(onboarding.completed, false),
+    },
+  };
 };
 
 const priorityClass = (priority) => {
@@ -931,6 +1742,7 @@ const renderTodoRow = (todo, categories, search = '') => {
   const descriptionMarkup = todo.description
     ? highlightMatch(todo.description, search)
     : '<span class="description-empty">No description</span>';
+  const reminderDisplay = todo.reminderAt ? formatReadableDate(todo.reminderAt) : 'Not set';
 
   return `
     <li class="todo-item ${todo.completed ? 'is-done' : ''}" data-task-id="${todo.id}" data-completed="${todo.completed ? 'true' : 'false'}" draggable="true">
@@ -950,6 +1762,7 @@ const renderTodoRow = (todo, categories, search = '') => {
             ).join('')}
           </select>
           <input class="input" type="date" name="dueAt" value="${escapeHtml(todo.dueAt)}" />
+          <input class="input" type="datetime-local" name="reminderAt" value="${escapeHtml(toInputDateTime(todo.reminderAt))}" />
           ${renderCategorySelect('categoryId', categories, todo.categoryId)}
           <textarea class="textarea" name="description" rows="1">${escapeHtml(todo.description)}</textarea>
           <button class="btn btn-soft" type="submit">Save inline</button>
@@ -960,6 +1773,7 @@ const renderTodoRow = (todo, categories, search = '') => {
           <span class="meta-chip category-chip" style="--chip-color:${escapeHtml(category.color)}">
             ${escapeHtml(category.icon)} ${escapeHtml(category.name)}
           </span>
+          <span class="meta-chip">Reminder ${escapeHtml(reminderDisplay)}</span>
           ${chips}
           <span class="meta-chip">Due ${todo.dueAt ? escapeHtml(todo.dueAt) : 'Not set'}</span>
           <span class="meta-chip">Updated ${todo.updatedAt.slice(0, 10)}</span>
@@ -1121,7 +1935,286 @@ const renderFilterPanel = (categories, filterState = [], presets = []) => {
         <h3>Saved Presets</h3>
         <ul class="preset-list">${presetsMarkup || '<li class="empty">No saved presets yet.</li>'}</ul>
       </section>
-    </section>
+  </section>
+  `;
+};
+
+const renderNotificationBadge = (unreadCount = 0, isActive = false) => {
+  const activeClass = isActive ? 'active' : '';
+  if (unreadCount > 0) {
+    return `<a href="/notifications" class="${activeClass}">🔔 Notifications <span class="notification-badge">${unreadCount}</span></a>`;
+  }
+  return `<a href="/notifications" class="${activeClass}">🔔 Notifications</a>`;
+};
+
+const notificationTypeClass = (type) => {
+  return `notification-type-${NOTIFICATION_TYPE_TOKENS[type] || 'success'}`;
+};
+
+const notificationTypeLabel = (type) => {
+  return NOTIFICATION_TYPE_LABELS[type] || 'System';
+};
+
+const renderNotificationPage = ({
+  notifications = [],
+  notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  appSettings = DEFAULT_APP_SETTINGS,
+}) => {
+  const prefs = normalizeNotificationPreferences(notificationPreferences);
+  const activeNotifications = visibleNotifications(notifications, prefs);
+  const unreadCount = unreadNotificationCount(notifications, prefs);
+  const settings = normalizeAppSettings(appSettings);
+
+  const notificationRows = activeNotifications
+    .map((notification) => {
+      const stateClass = notification.read ? 'is-read' : 'is-unread';
+      const badgeClass = notificationTypeClass(notification.type);
+      const readActionLabel = notification.read ? 'Unread' : 'Read';
+
+      return `
+        <li class="notification-item ${stateClass}">
+          <div class="notification-main">
+            <div class="notification-title-wrap">
+              <span class="notification-type ${badgeClass}">${notificationTypeLabel(notification.type)}</span>
+              <strong class="notification-title">${escapeHtml(notification.title)}</strong>
+            </div>
+            <p class="notification-message">${escapeHtml(notification.message)}</p>
+            <div class="notification-meta">
+              <span>${escapeHtml(formatReadableDate(notification.createdAt))}</span>
+              ${notification.read ? `<span>Read ${escapeHtml(formatReadableDate(notification.readAt))}</span>` : ''}
+              ${notification.taskId ? `<span><a href="/" class="notification-task-link">Task #${notification.taskId}</a></span>` : ''}
+            </div>
+          </div>
+          <form method="POST" action="/notifications/${notification.id}/read" class="notification-form">
+            <input type="hidden" name="target" value="${notification.read ? 'unread' : 'read'}" />
+            <button class="btn ${notification.read ? 'btn-outline' : 'btn-soft'}" type="submit">${readActionLabel}</button>
+          </form>
+        </li>
+      `;
+    })
+    .join('');
+
+  return `
+  <!doctype html>
+  <html lang="en" data-theme-mode="${escapeHtml(settings.theme)}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notification Centre</title>
+    <link rel="stylesheet" href="/styles.css" />
+    ${renderThemeBootstrap(settings)}
+  </head>
+  <body>
+    <main class="container">
+      <header class="app-header">
+        <h1>Notification Centre</h1>
+        ${renderTopNav(unreadCount, 'notifications')}
+      </header>
+
+      <section class="card surface">
+        <h2>Unread: ${unreadCount}</h2>
+        <div class="notification-toolbar">
+          <form method="POST" action="/notifications/read-all">
+            <button class="btn btn-primary" type="submit">Mark all as read</button>
+          </form>
+          <p class="help-text">Only unread notifications with enabled types are counted in the header badge.</p>
+        </div>
+        <ul class="notification-list">
+          ${notificationRows || '<li class="empty">No notifications to show.</li>'}
+        </ul>
+      </section>
+
+      <section class="card surface notification-preferences">
+        <h2>Notification Preferences</h2>
+        <form method="POST" action="/notifications/preferences" class="notification-preference-form">
+          <fieldset class="notification-types">
+            <legend>Show these types</legend>
+            ${NOTIFICATION_TYPES_FOR_LOOP
+              .map(
+                (type) => `
+                  <label class="control">
+                    <input type="checkbox" name="${escapeHtml(normalizeNotificationFieldName('type', type))}" value="1" ${prefs.types[type] ? 'checked' : ''} />
+                    <span>${escapeHtml(notificationTypeLabel(type))}</span>
+                  </label>`
+              )
+              .join('')}
+          </fieldset>
+
+          <fieldset class="notification-types">
+            <legend>Notification categories</legend>
+            ${NOTIFICATION_TYPES_FOR_LOOP
+              .map(
+                (type) => `
+                  <label class="control">
+                    <input type="checkbox" name="${escapeHtml(normalizeNotificationFieldName('category', type))}" value="1" ${
+                      prefs.categories[type] ? 'checked' : ''
+                    } />
+                    <span>${escapeHtml(notificationTypeLabel(type))}</span>
+                  </label>`
+              )
+              .join('')}
+          </fieldset>
+
+          <label class="control" for="quietEnabled">
+            <input id="quietEnabled" type="checkbox" name="quietHoursEnabled" value="1" ${prefs.quietHours.enabled ? 'checked' : ''} />
+            Enable quiet hours
+          </label>
+
+          <div class="quiet-inputs">
+            <label>
+              From
+              <input class="input" type="time" name="quietStart" value="${escapeHtml(prefs.quietHours.start)}" />
+            </label>
+            <label>
+              To
+              <input class="input" type="time" name="quietEnd" value="${escapeHtml(prefs.quietHours.end)}" />
+            </label>
+          </div>
+
+          <button class="btn btn-outline" type="submit">Save preferences</button>
+        </form>
+      </section>
+    </main>
+  </body>
+  </html>
+  `;
+};
+
+const renderDashboardPage = ({
+  todos = [],
+  notifications = [],
+  notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  appSettings = DEFAULT_APP_SETTINGS,
+}) => {
+  const prefs = normalizeNotificationPreferences(notificationPreferences);
+  const unreadCount = unreadNotificationCount(notifications, prefs);
+  const stats = buildDashboardStats(todos, notifications);
+  const heatLevels = Math.max(stats.heatmap.max, 1);
+  const streakLabel =
+    stats.streakDays > 7 ? `${stats.streakDays} days` : `${stats.streakDays} ${stats.streakDays === 1 ? 'day' : 'days'}`;
+  const settings = normalizeAppSettings(appSettings);
+
+  const activityMarkup = stats.recentActivity
+    .map((entry) => {
+      return `
+        <li class="activity-item">
+          <span class="activity-icon">${entry.icon}</span>
+          <div class="activity-content">
+            <strong>${escapeHtml(entry.title)}</strong>
+            <p>${escapeHtml(entry.detail || '')}</p>
+            <span class="activity-time">${escapeHtml(formatReadableDate(entry.time))}</span>
+          </div>
+        </li>
+      `;
+    })
+    .join('');
+
+  return `
+  <!doctype html>
+  <html lang="en" data-theme-mode="${escapeHtml(settings.theme)}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+    ${renderThemeBootstrap(settings)}
+  </head>
+  <body>
+    <main class="container">
+      <header class="app-header">
+        <h1>Dashboard</h1>
+        ${renderTopNav(unreadCount, 'dashboard')}
+      </header>
+
+      <section class="card surface dashboard-overview">
+        <div class="dashboard-kpi dashboard-large">
+          <h3>Tasks</h3>
+          <p class="kpi-value">${stats.counts.total}</p>
+          <p class="kpi-meta">Active tasks</p>
+        </div>
+        <div class="dashboard-kpi dashboard-large">
+          <h3>Completed</h3>
+          <p class="kpi-value">${stats.counts.completed}</p>
+          <p class="kpi-meta">Completed tasks</p>
+        </div>
+        <div class="dashboard-kpi dashboard-large">
+          <h3>Streak</h3>
+          <p class="kpi-value">${streakLabel}</p>
+          <p class="kpi-meta">Consecutive days with completion</p>
+        </div>
+      </section>
+
+      <section class="card surface dashboard-grid">
+        <article class="dashboard-block">
+          <h3>Completion Rate</h3>
+          ${completionRateCards(stats.completionRates)}
+        </article>
+
+        <article class="dashboard-block">
+          <h3>Tasks by priority</h3>
+          <div class="bar-chart">
+            ${stats.priorityDistribution
+              .map(
+                (priority) => `
+                  <div class="bar-row">
+                    <span class="bar-label">${escapeHtml(priority.label)}</span>
+                    <div class="bar-track">
+                      <span
+                        class="bar-fill priority-${priority.token}"
+                        style="--bar-value:${priority.percent}%;"
+                      ></span>
+                    </div>
+                    <span class="bar-count">${priority.count}</span>
+                  </div>
+                `,
+              )
+              .join('')}
+          </div>
+        </article>
+
+        <article class="dashboard-block">
+          <h3>Overdue by urgency</h3>
+          <p class="kpi-meta">Total overdue: ${stats.overdue.total}</p>
+          <div class="overdue-grid">
+            ${stats.overdue.buckets
+              .map(
+                (bucket) => `
+                  <div class="urgency-chip urgency-${bucket.className}">
+                    <p>${escapeHtml(bucket.label)}</p>
+                    <strong>${bucket.count}</strong>
+                  </div>
+                `,
+              )
+              .join('')}
+          </div>
+        </article>
+
+        <article class="dashboard-block">
+          <h3>Most productive day</h3>
+          <div class="heatmap-grid">
+            ${stats.heatmap.labels
+              .map((label, index) => {
+                const count = stats.heatmap.data[index];
+                const intensity = heatLevels ? Math.round((count / heatLevels) * 4) : 0;
+                return `
+                  <div class="heat-cell heat-level-${intensity}">
+                    <span class="weekday">${escapeHtml(label)}</span>
+                    <strong>${count}</strong>
+                  </div>
+                `;
+              })
+              .join('')}
+          </div>
+        </article>
+
+        <article class="dashboard-block dashboard-full">
+          <h3>Recent activity</h3>
+          <ul class="activity-list">${activityMarkup || '<li class="empty">No recent activity.</li>'}</ul>
+        </article>
+      </section>
+    </main>
+  </body>
+  </html>
   `;
 };
 
@@ -1157,11 +2250,15 @@ const renderPage = ({
   categories,
   filterState = {},
   filterPresets = [],
+  notifications = [],
+  notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  appSettings = DEFAULT_APP_SETTINGS,
   smart,
   statusFilter = 'all',
   selectedTag = '',
   isTrashView = false,
 }) => {
+  const settings = normalizeAppSettings(appSettings);
   const activeTodos = getActiveTodos(todos);
   const deletedTodos = getDeletedTodos(todos);
   const smartFilter = filterState.smart || smartParam(smart);
@@ -1191,6 +2288,7 @@ const renderPage = ({
     title: todo.title,
     description: todo.description,
     dueAt: todo.dueAt,
+    reminderAt: toInputDateTime(todo.reminderAt),
     priority: todo.priority,
     categoryId: todo.categoryId,
     tags: todo.tags,
@@ -1228,21 +2326,19 @@ const renderPage = ({
 
   return `
   <!doctype html>
-  <html lang="en">
+  <html lang="en" data-theme-mode="${escapeHtml(settings.theme)}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Task Management</title>
     <link rel="stylesheet" href="/styles.css" />
+    ${renderThemeBootstrap(settings)}
   </head>
   <body>
     <main class="container">
       <header class="app-header">
         <h1>Task Management</h1>
-        <nav class="app-nav">
-          <a href="/">Tasks</a>
-          <a href="/categories">Categories</a>
-        </nav>
+        ${renderTopNav(unreadNotificationCount(notifications, notificationPreferences), 'tasks')}
       </header>
 
       ${!isTrashView ? `
@@ -1254,11 +2350,14 @@ const renderPage = ({
           <select class="select" name="priority">
             ${PRIORITY_OPTIONS.map(
               (option) =>
-                `<option value="${option.value}" ${option.value === 'medium' ? 'selected' : ''}>${option.label}</option>`,
+                `<option value="${option.value}" ${
+                  option.value === settings.defaults.newTaskPriority ? 'selected' : ''
+                }>${option.label}</option>`,
             ).join('')}
           </select>
           ${renderCategorySelect('categoryId', categories, categories[0]?.id)}
           <input class="input" type="text" name="tags" placeholder="Tags (comma separated)" />
+          <input class="input" type="datetime-local" name="reminderAt" />
           <button class="btn btn-primary" type="submit">Add Task</button>
         </form>
       </section>
@@ -1317,6 +2416,7 @@ const renderPage = ({
           </select>
           ${renderCategorySelect('categoryId', categories, categories[0]?.id).replace('class="select"', 'class="select" id="sheet-category"')}
           <input class="input" id="sheet-tags" name="tags" placeholder="Tags (comma separated)" />
+          <input class="input" type="datetime-local" id="sheet-reminderAt" name="reminderAt" />
           <label class="control">
             <input type="checkbox" id="sheet-starred" name="starred" value="1" />
             Star this task
@@ -1418,6 +2518,7 @@ const renderPage = ({
         const sheetPriority = document.getElementById('sheet-priority');
         const sheetCategory = document.getElementById('sheet-category');
         const sheetTags = document.getElementById('sheet-tags');
+        const sheetReminderAt = document.getElementById('sheet-reminderAt');
         const sheetStarred = document.getElementById('sheet-starred');
 
         const openSheet = (event) => {
@@ -1437,6 +2538,7 @@ const renderPage = ({
           sheetPriority.value = task.priority || 'medium';
           sheetCategory.value = String(task.categoryId || '');
           sheetTags.value = Array.isArray(task.tags) ? task.tags.join(', ') : '';
+          sheetReminderAt.value = task.reminderAt || '';
           sheetStarred.checked = Boolean(task.starred);
           sheetForm.action = '/todos/' + id + '/edit';
 
@@ -1655,7 +2757,13 @@ const renderPage = ({
   `;
 };
 
-const renderCategoryPage = (categories, error = '') => {
+const renderCategoryPage = (
+  categories,
+  error = '',
+  notifications = [],
+  notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  appSettings = DEFAULT_APP_SETTINGS,
+) => {
   const rows = categories
     .map(
       (category) => `
@@ -1675,24 +2783,23 @@ const renderCategoryPage = (categories, error = '') => {
     .join('');
 
   const errorBlock = error ? `<p class="error-msg">${escapeHtml(error)}</p>` : '';
+  const settings = normalizeAppSettings(appSettings);
 
   return `
   <!doctype html>
-  <html lang="en">
+  <html lang="en" data-theme-mode="${escapeHtml(settings.theme)}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Categories</title>
     <link rel="stylesheet" href="/styles.css" />
+    ${renderThemeBootstrap(settings)}
   </head>
   <body>
     <main class="container">
       <header class="app-header">
         <h1>Categories</h1>
-        <nav class="app-nav">
-          <a href="/">Tasks</a>
-          <a href="/categories" class="active">Categories</a>
-        </nav>
+        ${renderTopNav(unreadNotificationCount(notifications, notificationPreferences), 'categories')}
       </header>
 
       ${errorBlock}
@@ -1716,9 +2823,168 @@ const renderCategoryPage = (categories, error = '') => {
   `;
 };
 
-  app.get('/', async (req, res) => {
-    const { todos, categories, filterPresets } = await loadStore();
-    const filterState = normalizeFilterFromSource(req.query, categories, filterPresets);
+const renderSettingsPage = ({
+  appSettings = DEFAULT_APP_SETTINGS,
+  notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES,
+  notifications = [],
+}) => {
+  const settings = normalizeAppSettings(appSettings);
+  const prefs = normalizeNotificationPreferences(notificationPreferences);
+  const unreadCount = unreadNotificationCount(notifications, prefs);
+
+  return `
+  <!doctype html>
+  <html lang="en" data-theme-mode="${escapeHtml(settings.theme)}">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Settings</title>
+    <link rel="stylesheet" href="/styles.css" />
+    ${renderThemeBootstrap(settings)}
+  </head>
+  <body>
+    <main class="container">
+      <header class="app-header">
+        <h1>Settings</h1>
+        ${renderTopNav(unreadCount, 'settings')}
+      </header>
+
+      <section class="card surface">
+        <h2>Appearance</h2>
+        <form method="POST" action="/settings" class="settings-form">
+          <label class="control">
+            Theme
+            <select class="select" name="theme" id="theme-select">
+              ${THEME_OPTIONS.map(
+                (option) =>
+                  `<option value="${option.value}" ${settings.theme === option.value ? 'selected' : ''}>${option.label}</option>`,
+              ).join('')}
+            </select>
+          </label>
+          <button class="btn btn-outline" type="submit">Save theme</button>
+        </form>
+      </section>
+
+      <section class="card surface">
+        <h2>Defaults</h2>
+        <form method="POST" action="/settings" class="settings-form">
+          <label class="control">
+            Default new task priority
+            <select class="select" name="newTaskPriority">
+              ${PRIORITY_OPTIONS.map(
+                (option) =>
+                  `<option value="${option.value}" ${
+                    settings.defaults.newTaskPriority === option.value ? 'selected' : ''
+                  }>${option.label}</option>`,
+              ).join('')}
+            </select>
+          </label>
+          <label class="control">
+            Default task sort
+            <select class="select" name="defaultSort">
+              ${SORT_OPTIONS.map(
+                (option) =>
+                  `<option value="${option.value}" ${settings.defaults.defaultSort === option.value ? 'selected' : ''}>${
+                    option.label
+                  }</option>`,
+              ).join('')}
+            </select>
+          </label>
+          <button class="btn btn-outline" type="submit">Save defaults</button>
+        </form>
+      </section>
+
+      <section class="card surface">
+        <h2>Notification preferences</h2>
+        <form method="POST" action="/settings" class="notification-preference-form">
+          <fieldset class="notification-types">
+            <legend>Notification types</legend>
+            ${NOTIFICATION_TYPES_FOR_LOOP
+              .map(
+                (type) =>
+                  `<label class="control">
+                    <input type="checkbox" name="${escapeHtml(
+                      normalizeNotificationFieldName('type', type),
+                    )}" value="1" ${prefs.types[type] ? 'checked' : ''} />
+                    <span>${escapeHtml(notificationTypeLabel(type))}</span>
+                  </label>`,
+              )
+              .join('')}
+          </fieldset>
+          <fieldset class="notification-types">
+            <legend>Notification categories</legend>
+            ${NOTIFICATION_TYPES_FOR_LOOP
+              .map(
+                (type) =>
+                  `<label class="control">
+                    <input type="checkbox" name="${escapeHtml(
+                      normalizeNotificationFieldName('category', type),
+                    )}" value="1" ${prefs.categories[type] ? 'checked' : ''} />
+                    <span>${escapeHtml(notificationTypeLabel(type))}</span>
+                  </label>`,
+              )
+              .join('')}
+          </fieldset>
+
+          <label class="control" for="quietEnabled">
+            <input id="quietEnabled" type="checkbox" name="quietHoursEnabled" value="1" ${prefs.quietHours.enabled ? 'checked' : ''} />
+            Enable quiet hours
+          </label>
+
+          <div class="quiet-inputs">
+            <label>
+              From
+              <input class="input" type="time" name="quietStart" value="${escapeHtml(prefs.quietHours.start)}" />
+            </label>
+            <label>
+              To
+              <input class="input" type="time" name="quietEnd" value="${escapeHtml(prefs.quietHours.end)}" />
+            </label>
+          </div>
+          <button class="btn btn-outline" type="submit">Save notification settings</button>
+        </form>
+      </section>
+
+      <section class="card surface">
+        <h2>Data export</h2>
+        <p class="help-text">Export all tasks and activity history for backup or external processing.</p>
+        <div class="settings-export">
+          <a class="btn btn-soft" href="/settings/export?format=json">Download JSON</a>
+          <a class="btn btn-soft" href="/settings/export?format=csv">Download CSV</a>
+        </div>
+      </section>
+
+      <section class="card surface danger-zone">
+        <h2>Danger zone</h2>
+        <div class="danger-actions">
+          <form method="POST" action="/settings/onboarding/reset">
+            <button class="btn btn-outline" type="submit">Reset onboarding</button>
+          </form>
+          <form method="POST" action="/settings/account/delete" onsubmit="return confirm('Delete account data and start fresh?')">
+            <button class="btn btn-danger" type="submit">Delete account</button>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      (function() {
+        const themeSelect = document.getElementById('theme-select');
+        if (themeSelect && window.__todoTheme) {
+          themeSelect.addEventListener('change', (event) => {
+            window.__todoTheme.applyThemeMode(event.target.value);
+          });
+        }
+      })();
+    </script>
+  </body>
+  </html>
+  `;
+};
+
+app.get('/', async (req, res) => {
+  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const filterState = normalizeFilterFromSource(req.query, categories, filterPresets);
     const { smart, statusFilter } = normalizeSmartFilter(req.query);
     const selectedTag = parseTags(req.query.tag)[0] || '';
 
@@ -1734,9 +3000,11 @@ const renderCategoryPage = (categories, error = '') => {
             smart: pageSmart,
           },
           smart: pageSmart,
+          notificationPreferences,
           statusFilter: 'all',
           selectedTag,
           isTrashView: true,
+          notifications,
         }),
       );
       return;
@@ -1749,35 +3017,47 @@ const renderCategoryPage = (categories, error = '') => {
         filterState,
         filterPresets,
         smart: pageSmart,
+        notificationPreferences,
         statusFilter,
         selectedTag,
         isTrashView: false,
+        notifications,
       }),
     );
   });
+
+app.get('/dashboard', async (_req, res) => {
+  const { todos, notifications, notificationPreferences } = await loadStore();
+  res.send(renderDashboardPage({ todos, notifications, notificationPreferences }));
+});
+
+app.get('/notifications', async (_req, res) => {
+  const { todos, notifications, notificationPreferences } = await loadStore();
+  res.send(renderNotificationPage({ todos, notifications, notificationPreferences }));
+});
 
 app.get('/trash', async (_req, res) => {
   res.redirect('/?smart=trash');
 });
 
 app.get('/categories', async (_req, res) => {
-  const { categories } = await loadStore();
-  res.send(renderCategoryPage(categories));
+  const { categories, notifications, notificationPreferences } = await loadStore();
+  res.send(renderCategoryPage(categories, '', notifications, notificationPreferences));
 });
 
 app.post('/categories', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
   const name = String(req.body.name || '').trim();
   const icon = String(req.body.icon || '🏷️').trim() || '🏷️';
   const color = sanitizeColor(req.body.color, '#64748b');
   if (!name) {
-    res.send(renderCategoryPage(categories, 'Name is required.'));
+    res.send(renderCategoryPage(categories, 'Name is required.', notifications, notificationPreferences));
     return;
   }
 
   const exists = categories.some((category) => category.name.toLowerCase() === name.toLowerCase());
   if (exists) {
-    res.send(renderCategoryPage(categories, 'A category with this name already exists.'));
+    res.send(renderCategoryPage(categories, 'A category with this name already exists.', notifications, notificationPreferences));
     return;
   }
 
@@ -1793,7 +3073,7 @@ app.post('/categories', async (req, res) => {
 });
 
 app.post('/categories/:id/edit', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -1826,7 +3106,7 @@ app.post('/categories/:id/edit', async (req, res) => {
 });
 
 app.post('/categories/:id/delete', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -1858,6 +3138,59 @@ app.post('/categories/:id/delete', async (req, res) => {
   const nextCategories = categories.filter((item) => item.id !== id);
   await writeStore(todos, nextCategories, filterPresets);
   res.redirect('/categories');
+});
+
+app.post('/notifications/:id/read', async (req, res) => {
+  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const id = parseId(req.params.id);
+  if (!id) {
+    return res.status(400).send('Invalid notification id');
+  }
+
+  const target = notifications.find((notification) => notification.id === id);
+  if (!target) {
+    return res.status(404).send('Notification not found');
+  }
+
+  target.read = req.body.target === 'unread' ? false : true;
+  target.readAt = target.read ? new Date().toISOString() : null;
+  target.updatedAt = new Date().toISOString();
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences);
+  res.redirect('/notifications');
+});
+
+app.post('/notifications/read-all', async (_req, res) => {
+  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const now = new Date().toISOString();
+
+  for (const notification of notifications) {
+    notification.read = true;
+    notification.readAt = now;
+    notification.updatedAt = now;
+  }
+
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences);
+  res.redirect('/notifications');
+});
+
+app.post('/notifications/preferences', async (req, res) => {
+  const { todos, categories, filterPresets, notifications } = await loadStore();
+  const nextPreferences = {
+    types: {
+      [NOTIFICATION_TYPES.dueSoon]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.dueSoon}`], false),
+      [NOTIFICATION_TYPES.overdue]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.overdue}`], false),
+      [NOTIFICATION_TYPES.reminder]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.reminder}`], false),
+      [NOTIFICATION_TYPES.system]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.system}`], false),
+    },
+    quietHours: {
+      enabled: parseBoolean(req.body.quietHoursEnabled, false),
+      start: normalizeTime(req.body.quietStart, QUIET_HOURS_DEFAULT.start),
+      end: normalizeTime(req.body.quietEnd, QUIET_HOURS_DEFAULT.end),
+    },
+  };
+
+  await writeStore(todos, categories, filterPresets, notifications, nextPreferences);
+  res.redirect('/notifications');
 });
 
 app.post('/presets', async (req, res) => {
@@ -1915,6 +3248,17 @@ app.get('/api/todos', async (req, res) => {
   res.json(sorted);
 });
 
+app.get('/api/notifications', async (req, res) => {
+  const { notifications, notificationPreferences } = await loadStore();
+  const prefs = normalizeNotificationPreferences(notificationPreferences);
+  const visible = visibleNotifications(notifications, prefs);
+  res.json({
+    notifications: visible,
+    preferences: prefs,
+    unreadCount: unreadNotificationCount(visible),
+  });
+});
+
 app.get('/api/todos/:id', async (req, res) => {
   const { todos } = await loadStore();
   const id = parseId(req.params.id);
@@ -1933,6 +3277,7 @@ app.post('/todos', async (req, res) => {
   const title = String(req.body.title || '').trim();
   const description = String(req.body.description || '').trim();
   const dueAt = String(req.body.dueAt || '').trim();
+  const reminderAt = normalizeReminderAt(req.body.reminderAt);
   const priority = normalizePriority(req.body.priority);
   const categoryId = resolveCategoryId(req.body.categoryId ?? req.body.category, categories);
   const tags = parseTags(req.body.tags);
@@ -1946,7 +3291,9 @@ app.post('/todos', async (req, res) => {
     title,
     description,
     completed: false,
+    completedAt: null,
     dueAt,
+    reminderAt,
     priority,
     categoryId,
     tags,
@@ -1981,6 +3328,9 @@ app.post('/todos/:id/edit', async (req, res) => {
   todo.title = title;
   todo.description = String(req.body.description || '').trim();
   todo.dueAt = String(req.body.dueAt || '').trim();
+  if (Object.prototype.hasOwnProperty.call(req.body, 'reminderAt')) {
+    todo.reminderAt = normalizeReminderAt(req.body.reminderAt);
+  }
   todo.priority = normalizePriority(req.body.priority);
   if (Object.prototype.hasOwnProperty.call(req.body, 'categoryId') || Object.prototype.hasOwnProperty.call(req.body, 'category')) {
     todo.categoryId = resolveCategoryId(req.body.categoryId ?? req.body.category, categories);
@@ -2084,9 +3434,11 @@ app.post('/todos/bulk', async (req, res) => {
     }
     if (action === 'complete') {
       todo.completed = true;
+      todo.completedAt = new Date().toISOString();
     }
     if (action === 'incomplete') {
       todo.completed = false;
+      todo.completedAt = null;
     }
     if (action === 'delete') {
       todo.deletedAt = new Date().toISOString();
@@ -2127,6 +3479,7 @@ app.post('/todos/:id/duplicate', async (req, res) => {
     title: `${source.title} (Copy)`,
     subtasks: duplicatedSubtasks,
     completed: false,
+    completedAt: null,
     starred: false,
     createdAt: now,
     updatedAt: now,
@@ -2229,7 +3582,9 @@ app.patch('/api/todos/:id', async (req, res) => {
   }
 
   if ('completed' in req.body) {
-    todo.completed = Boolean(req.body.completed);
+    const nextCompleted = Boolean(req.body.completed);
+    todo.completed = nextCompleted;
+    todo.completedAt = nextCompleted ? new Date().toISOString() : null;
   }
   if ('title' in req.body) {
     const title = String(req.body.title).trim();
@@ -2243,6 +3598,9 @@ app.patch('/api/todos/:id', async (req, res) => {
   }
   if ('dueAt' in req.body) {
     todo.dueAt = String(req.body.dueAt).trim();
+  }
+  if ('reminderAt' in req.body) {
+    todo.reminderAt = normalizeReminderAt(req.body.reminderAt);
   }
   if ('priority' in req.body && PRIORITY_MAP[req.body.priority]) {
     todo.priority = req.body.priority;

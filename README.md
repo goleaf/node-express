@@ -51,6 +51,21 @@ Task management app implemented with vanilla Node.js + Express and no database.
   - priority
   - alphabetical
 - Search and filters can be used together and are preserved through sorting/presets
+- Per-task reminder picker (`datetime-local`) stored on each task
+- In-app notification center with:
+  - unread badge
+  - due-soon, overdue, reminder and system notification types
+  - mark all as read
+  - mark individual notifications read/unread
+  - type visibility + quiet-hours preferences
+- Soft delete retention window (30 days) before hard purge
+- Dashboard statistics:
+  - completion rate tiles for today / this week / this month
+  - tasks by priority bar chart
+  - consecutive completion streak counter
+  - overdue count with urgency bands
+  - productivity heatmap by day of week
+  - recent activity feed
 
 ## Setup
 
@@ -66,12 +81,18 @@ The file store lives at `data/todos.json`.
 ## Endpoints
 
 - `GET /` — main UI
+- `GET /dashboard` — dashboard metrics
 - `GET /trash` — trash UI (recover / hard delete)
 - `GET /categories` — category management screen
+- `GET /notifications` — notification center
 - `GET /api/todos?includeDeleted=true|false` — list tasks (`false` default)
 - `GET /api/todos?smart=all|today|starred|completed|trash` — smart list filtering
 - `GET /api/todos/:id` — get task JSON
+- `GET /api/notifications` — notification center JSON with visible notifications, prefs and unread count
 - `POST /todos` — create task (form)
+- `POST /notifications/:id/read` — mark notification read/unread
+- `POST /notifications/read-all` — mark all notifications read
+- `POST /notifications/preferences` — update notification preferences
 - `POST /todos/:id/edit` — update task from UI (form)
 - `POST /todos/:id/delete` — move task to trash
 - `POST /todos/:id/recover` — recover trashed task
