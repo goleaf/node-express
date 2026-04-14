@@ -271,6 +271,24 @@ const parseNotificationPreferencesForm = (body = {}) => {
   };
 };
 
+const hasNotificationPreferencePayload = (body = {}) => {
+  return Object.keys(body || {}).some((key) => {
+    return (
+      key.startsWith('type_') ||
+      key.startsWith('category_') ||
+      key === 'quietHoursEnabled' ||
+      key === 'quietStart' ||
+      key === 'quietEnd'
+    );
+  });
+};
+
+const toCsvSafe = (value = '') => {
+  const raw = typeof value === 'string' ? value : String(value ?? '');
+  const escaped = raw.replaceAll('"', '""');
+  return `"${escaped}"`;
+};
+
 const minutesFromTime = (time = '00:00') => {
   const [hours, minutes] = normalizeTime(time, '00:00').split(':');
   return Number.parseInt(hours, 10) * 60 + Number.parseInt(minutes, 10);
@@ -1034,7 +1052,7 @@ const loadStore = async () => {
   const nextNotificationState = reconcileNotifications(cleaned, notifications, notificationPreferences);
   const normalizedPresets = filterPresets
     .map((preset, index) => {
-      const normalized = normalizeFilterFromSource(preset?.filters || preset, deduplicatedCategories, []);
+      const normalized = normalizeFilterFromSource(preset?.filters || preset, deduplicatedCategories, [], appSettings);
       return {
         id: parseId(preset?.id) || index + 1,
         name: String(preset?.name || '').trim() || 'Saved filter',
@@ -1093,6 +1111,7 @@ const ensureStoreShape = async () => {
       normalized.filterPresets,
       nextNotificationState.notifications,
       nextNotificationState.notificationPreferences,
+      normalized.appSettings,
     );
   } catch (error) {
     if (error.code !== 'ENOENT') {
@@ -1497,6 +1516,57 @@ const buildRecentActivity = (todos, notifications = [], limit = 12) => {
     .filter((entry) => entry.time !== null)
     .sort((a, b) => b.time - a.time)
     .slice(0, limit);
+};
+
+const buildTaskExportCsv = (tasks = [], categories = []) => {
+  const headers = [
+    'id',
+    'title',
+    'description',
+    'completed',
+    'dueAt',
+    'reminderAt',
+    'priority',
+    'categoryId',
+    'categoryName',
+    'tags',
+    'starred',
+    'position',
+    'subtaskProgress',
+    'createdAt',
+    'updatedAt',
+    'completedAt',
+    'deletedAt',
+  ];
+  const categoryMap = categoryMapFrom(categories);
+
+  const rows = tasks.map((todo) => {
+    const completedCount = todo.subtasks.filter((subtask) => subtask.completed).length;
+    const subtaskTotal = todo.subtasks.length;
+    const category = categoryMap[String(todo.categoryId)] || {};
+
+    return [
+      toCsvSafe(todo.id),
+      toCsvSafe(todo.title),
+      toCsvSafe(todo.description),
+      toCsvSafe(todo.completed ? '1' : '0'),
+      toCsvSafe(todo.dueAt),
+      toCsvSafe(todo.reminderAt),
+      toCsvSafe(todo.priority),
+      toCsvSafe(todo.categoryId),
+      toCsvSafe(category.name || ''),
+      toCsvSafe((todo.tags || []).join('; ')),
+      toCsvSafe(todo.starred ? '1' : '0'),
+      toCsvSafe(todo.position),
+      toCsvSafe(`${completedCount}/${subtaskTotal}`),
+      toCsvSafe(todo.createdAt),
+      toCsvSafe(todo.updatedAt),
+      toCsvSafe(todo.completedAt || ''),
+      toCsvSafe(todo.deletedAt || ''),
+    ].join(',');
+  });
+
+  return [`${headers.join(',')}`, ...rows].join('\n');
 };
 
 const buildDashboardStats = (todos, notifications = []) => {
@@ -2983,57 +3053,64 @@ const renderSettingsPage = ({
 };
 
 app.get('/', async (req, res) => {
-  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const filterState = normalizeFilterFromSource(req.query, categories, filterPresets);
-    const { smart, statusFilter } = normalizeSmartFilter(req.query);
-    const selectedTag = parseTags(req.query.tag)[0] || '';
+  const { smart, statusFilter } = normalizeSmartFilter(req.query);
+  const selectedTag = parseTags(req.query.tag)[0] || '';
 
-    const isTrashView = smart === 'trash';
-    const pageSmart = isTrashView ? 'trash' : smart;
-    if (isTrashView) {
-      res.send(
-        renderPage({
-          todos,
-          categories,
-          filterState: {
-            ...filterState,
-            smart: pageSmart,
-          },
-          smart: pageSmart,
-          notificationPreferences,
-          statusFilter: 'all',
-          selectedTag,
-          isTrashView: true,
-          notifications,
-        }),
-      );
-      return;
-    }
-
+  const isTrashView = smart === 'trash';
+  const pageSmart = isTrashView ? 'trash' : smart;
+  if (isTrashView) {
     res.send(
       renderPage({
         todos,
         categories,
-        filterState,
-        filterPresets,
+        filterState: {
+          ...filterState,
+          smart: pageSmart,
+          sort: filterState.sort || appSettings.defaults.defaultSort,
+        },
         smart: pageSmart,
+        filterPresets,
+        appSettings,
         notificationPreferences,
-        statusFilter,
+        statusFilter: 'all',
         selectedTag,
-        isTrashView: false,
+        isTrashView: true,
         notifications,
       }),
     );
-  });
+    return;
+  }
+
+  res.send(
+    renderPage({
+      todos,
+      categories,
+      filterState: {
+        ...filterState,
+        sort: filterState.sort || appSettings.defaults.defaultSort,
+      },
+      filterPresets,
+      smart: pageSmart,
+      appSettings,
+      notificationPreferences,
+      statusFilter,
+      selectedTag,
+      isTrashView: false,
+      notifications,
+    }),
+  );
+});
 
 app.get('/dashboard', async (_req, res) => {
-  const { todos, notifications, notificationPreferences } = await loadStore();
-  res.send(renderDashboardPage({ todos, notifications, notificationPreferences }));
+  const { todos, notifications, notificationPreferences, appSettings } = await loadStore();
+  res.send(renderDashboardPage({ todos, notifications, notificationPreferences, appSettings }));
 });
 
 app.get('/notifications', async (_req, res) => {
-  const { todos, notifications, notificationPreferences } = await loadStore();
-  res.send(renderNotificationPage({ todos, notifications, notificationPreferences }));
+  const { todos, notifications, notificationPreferences, appSettings } = await loadStore();
+  res.send(renderNotificationPage({ todos, notifications, notificationPreferences, appSettings }));
 });
 
 app.get('/trash', async (_req, res) => {
@@ -3041,8 +3118,13 @@ app.get('/trash', async (_req, res) => {
 });
 
 app.get('/categories', async (_req, res) => {
-  const { categories, notifications, notificationPreferences } = await loadStore();
-  res.send(renderCategoryPage(categories, '', notifications, notificationPreferences));
+  const { categories, notifications, notificationPreferences, appSettings } = await loadStore();
+  res.send(renderCategoryPage(categories, '', notifications, notificationPreferences, appSettings));
+});
+
+app.get('/settings', async (_req, res) => {
+  const { appSettings, notificationPreferences, notifications } = await loadStore();
+  res.send(renderSettingsPage({ appSettings, notificationPreferences, notifications }));
 });
 
 app.post('/categories', async (req, res) => {
