@@ -3128,18 +3128,20 @@ app.get('/settings', async (_req, res) => {
 });
 
 app.post('/categories', async (req, res) => {
-  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const name = String(req.body.name || '').trim();
   const icon = String(req.body.icon || '🏷️').trim() || '🏷️';
   const color = sanitizeColor(req.body.color, '#64748b');
   if (!name) {
-    res.send(renderCategoryPage(categories, 'Name is required.', notifications, notificationPreferences));
+    res.send(renderCategoryPage(categories, 'Name is required.', notifications, notificationPreferences, appSettings));
     return;
   }
 
   const exists = categories.some((category) => category.name.toLowerCase() === name.toLowerCase());
   if (exists) {
-    res.send(renderCategoryPage(categories, 'A category with this name already exists.', notifications, notificationPreferences));
+    res.send(
+      renderCategoryPage(categories, 'A category with this name already exists.', notifications, notificationPreferences, appSettings),
+    );
     return;
   }
 
@@ -3150,12 +3152,12 @@ app.post('/categories', async (req, res) => {
     color,
   });
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, null, null, appSettings);
   res.redirect('/categories');
 });
 
 app.post('/categories/:id/edit', async (req, res) => {
-  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3183,12 +3185,12 @@ app.post('/categories/:id/edit', async (req, res) => {
   category.icon = icon;
   category.color = color;
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/categories');
 });
 
 app.post('/categories/:id/delete', async (req, res) => {
-  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3218,12 +3220,12 @@ app.post('/categories/:id/delete', async (req, res) => {
   }
 
   const nextCategories = categories.filter((item) => item.id !== id);
-  await writeStore(todos, nextCategories, filterPresets);
+  await writeStore(todos, nextCategories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/categories');
 });
 
 app.post('/notifications/:id/read', async (req, res) => {
-  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid notification id');
@@ -3237,12 +3239,12 @@ app.post('/notifications/:id/read', async (req, res) => {
   target.read = req.body.target === 'unread' ? false : true;
   target.readAt = target.read ? new Date().toISOString() : null;
   target.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/notifications');
 });
 
 app.post('/notifications/read-all', async (_req, res) => {
-  const { todos, categories, filterPresets, notifications, notificationPreferences } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const now = new Date().toISOString();
 
   for (const notification of notifications) {
@@ -3251,34 +3253,129 @@ app.post('/notifications/read-all', async (_req, res) => {
     notification.updatedAt = now;
   }
 
-  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/notifications');
 });
 
 app.post('/notifications/preferences', async (req, res) => {
-  const { todos, categories, filterPresets, notifications } = await loadStore();
-  const nextPreferences = {
-    types: {
-      [NOTIFICATION_TYPES.dueSoon]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.dueSoon}`], false),
-      [NOTIFICATION_TYPES.overdue]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.overdue}`], false),
-      [NOTIFICATION_TYPES.reminder]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.reminder}`], false),
-      [NOTIFICATION_TYPES.system]: parseBoolean(req.body[`type_${NOTIFICATION_TYPES.system}`], false),
-    },
-    quietHours: {
-      enabled: parseBoolean(req.body.quietHoursEnabled, false),
-      start: normalizeTime(req.body.quietStart, QUIET_HOURS_DEFAULT.start),
-      end: normalizeTime(req.body.quietEnd, QUIET_HOURS_DEFAULT.end),
-    },
-  };
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
+  const nextPreferences = hasNotificationPreferencePayload(req.body)
+    ? parseNotificationPreferencesForm(req.body)
+    : notificationPreferences;
 
-  await writeStore(todos, categories, filterPresets, notifications, nextPreferences);
+  await writeStore(
+    todos,
+    categories,
+    filterPresets,
+    notifications,
+    nextPreferences,
+    appSettings,
+  );
   res.redirect('/notifications');
 });
 
+app.post('/settings', async (req, res) => {
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
+
+  const nextSettings = {
+    ...appSettings,
+    theme: req.body.theme ? normalizeThemeMode(req.body.theme) : appSettings.theme,
+    defaults: {
+      ...appSettings.defaults,
+      newTaskPriority: req.body.newTaskPriority
+        ? normalizePriority(req.body.newTaskPriority)
+        : appSettings.defaults.newTaskPriority,
+      defaultSort: req.body.defaultSort ? normalizeSort(req.body.defaultSort) : appSettings.defaults.defaultSort,
+    },
+    onboarding: {
+      ...appSettings.onboarding,
+      completed: parseBoolean(req.body.onboardingCompleted, appSettings.onboarding.completed),
+    },
+  };
+
+  const nextPreferences = hasNotificationPreferencePayload(req.body)
+    ? parseNotificationPreferencesForm(req.body)
+    : notificationPreferences;
+
+  await writeStore(
+    todos,
+    categories,
+    filterPresets,
+    notifications,
+    nextPreferences,
+    normalizeAppSettings(nextSettings),
+  );
+  res.redirect('/settings');
+});
+
+app.get('/settings/export', async (req, res) => {
+  const { todos, categories, appSettings, notificationPreferences, notifications } = await loadStore();
+  const format = normalizeExportFormat(req.query.format);
+  const now = new Date();
+  const dateStamp = now.toISOString().slice(0, 10);
+
+  if (format === 'csv') {
+    const csv = buildTaskExportCsv(getActiveTodos(todos), categories);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="tasks-${dateStamp}.csv"`);
+    res.send(csv);
+    return;
+  }
+
+  const payload = {
+    exportedAt: now.toISOString(),
+    appSettings,
+    notificationPreferences,
+    notifications,
+    todos: getActiveTodos(todos),
+    categories,
+  };
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="tasks-${dateStamp}.json"`);
+  res.send(safeScriptJson(payload));
+});
+
+app.post('/settings/account/delete', async (_req, res) => {
+  const categories = normalizeAndDeduplicateCategories(DEFAULT_CATEGORIES);
+  const initialTodo = normalizeTodo(INITIAL_TODO, categories);
+  const nextNotificationState = reconcileNotifications([initialTodo], [], DEFAULT_NOTIFICATION_PREFERENCES);
+
+  await writeStore(
+    [initialTodo],
+    categories,
+    [],
+    nextNotificationState.notifications,
+    nextNotificationState.notificationPreferences,
+    DEFAULT_APP_SETTINGS,
+  );
+  res.redirect('/');
+});
+
+app.post('/settings/onboarding/reset', async (_req, res) => {
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
+  const nextSettings = normalizeAppSettings({
+    ...appSettings,
+    onboarding: {
+      ...appSettings.onboarding,
+      completed: false,
+    },
+  });
+
+  await writeStore(
+    todos,
+    categories,
+    filterPresets,
+    notifications,
+    notificationPreferences,
+    nextSettings,
+  );
+  res.redirect('/settings');
+});
+
 app.post('/presets', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notificationPreferences, notifications, appSettings } = await loadStore();
   const name = String(req.body.name || '').trim() || 'Saved filter';
-  const normalized = normalizeFilterFromSource(req.body, categories, filterPresets);
+  const normalized = normalizeFilterFromSource(req.body, categories, filterPresets, appSettings);
   const filters = normalizeFilterForStorage(normalized);
   const presetId = nextPresetId(filterPresets);
   const now = new Date().toISOString();
@@ -3293,7 +3390,7 @@ app.post('/presets', async (req, res) => {
     },
   ];
 
-  await writeStore(todos, categories, nextPresets);
+  await writeStore(todos, categories, nextPresets, notifications, notificationPreferences, appSettings);
   const redirectPath = `/?${buildFilterQuery(
     {
       ...normalized,
@@ -3305,20 +3402,20 @@ app.post('/presets', async (req, res) => {
 });
 
 app.post('/presets/:id/delete', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid preset id');
   }
   const nextPresets = filterPresets.filter((preset) => parseId(preset.id) !== id);
-  await writeStore(todos, categories, nextPresets);
+  await writeStore(todos, categories, nextPresets, notifications, notificationPreferences, appSettings);
   res.redirect(req.get('referer') || '/');
 });
 
 app.get('/api/todos', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, appSettings } = await loadStore();
   const includeDeleted = req.query.includeDeleted === '1' || req.query.includeDeleted === 'true';
-  const filterState = normalizeFilterFromSource(req.query, categories, filterPresets);
+  const filterState = normalizeFilterFromSource(req.query, categories, filterPresets, appSettings);
   const { smart, statusFilter } = normalizeSmartFilter(req.query);
   const active = includeDeleted ? todos : getActiveTodos(todos);
   const filtered = applySmartFilter(active, smart, statusFilter);
@@ -3355,12 +3452,12 @@ app.get('/api/todos/:id', async (req, res) => {
 });
 
 app.post('/todos', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const title = String(req.body.title || '').trim();
   const description = String(req.body.description || '').trim();
   const dueAt = String(req.body.dueAt || '').trim();
   const reminderAt = normalizeReminderAt(req.body.reminderAt);
-  const priority = normalizePriority(req.body.priority);
+  const priority = normalizePriority(req.body.priority || appSettings.defaults.newTaskPriority);
   const categoryId = resolveCategoryId(req.body.categoryId ?? req.body.category, categories);
   const tags = parseTags(req.body.tags);
 
@@ -3387,12 +3484,12 @@ app.post('/todos', async (req, res) => {
     updatedAt: new Date().toISOString(),
   });
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/');
 });
 
 app.post('/todos/:id/edit', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3425,7 +3522,7 @@ app.post('/todos/:id/edit', async (req, res) => {
   }
   todo.updatedAt = new Date().toISOString();
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
 
   const referer = req.get('referer');
   if (referer) {
@@ -3441,7 +3538,7 @@ app.post('/todos/:id/edit', async (req, res) => {
 });
 
 app.post('/todos/:id/delete', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3454,12 +3551,12 @@ app.post('/todos/:id/delete', async (req, res) => {
 
   todo.deletedAt = new Date().toISOString();
   todo.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/');
 });
 
 app.post('/todos/:id/recover', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3472,12 +3569,12 @@ app.post('/todos/:id/recover', async (req, res) => {
 
   todo.deletedAt = null;
   todo.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/trash');
 });
 
 app.post('/todos/:id/hard-delete', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3488,12 +3585,12 @@ app.post('/todos/:id/hard-delete', async (req, res) => {
     return res.status(404).send('Todo not found');
   }
 
-  await writeStore(next, categories, filterPresets);
+  await writeStore(next, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/trash');
 });
 
 app.post('/todos/bulk', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const ids = parseIds(req.body.ids);
   const action = String(req.body.action || '').trim();
   const byId = new Set(ids);
@@ -3531,12 +3628,12 @@ app.post('/todos/bulk', async (req, res) => {
     todo.updatedAt = new Date().toISOString();
   }
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/');
 });
 
 app.post('/todos/:id/duplicate', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3570,12 +3667,12 @@ app.post('/todos/:id/duplicate', async (req, res) => {
   };
 
   todos.push(duplicated);
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/');
 });
 
 app.post('/todos/reorder', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const order = parseIds(req.body.order);
   if (!order.length) {
     return res.status(400).send('Order missing');
@@ -3594,12 +3691,12 @@ app.post('/todos/reorder', async (req, res) => {
     }
   });
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.json({ ok: true, order: finalOrder });
 });
 
 app.post('/todos/:id/subtasks', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).send('Invalid id');
@@ -3623,12 +3720,12 @@ app.post('/todos/:id/subtasks', async (req, res) => {
     updatedAt: new Date().toISOString(),
   });
   todo.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/');
 });
 
 app.post('/todos/:id/subtasks/:subtaskId/delete', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   const subtaskId = parseId(req.params.subtaskId);
   if (!id || !subtaskId) {
@@ -3647,12 +3744,12 @@ app.post('/todos/:id/subtasks/:subtaskId/delete', async (req, res) => {
 
   todo.subtasks = nextSubtasks;
   todo.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.redirect('/');
 });
 
 app.patch('/api/todos/:id', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).json({ error: 'Invalid id' });
@@ -3698,12 +3795,12 @@ app.patch('/api/todos/:id', async (req, res) => {
   }
 
   todo.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.json(todo);
 });
 
 app.patch('/api/todos/:id/subtasks/:subtaskId', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   const subtaskId = parseId(req.params.subtaskId);
   if (!id || !subtaskId) {
@@ -3733,12 +3830,12 @@ app.patch('/api/todos/:id/subtasks/:subtaskId', async (req, res) => {
   subtask.updatedAt = new Date().toISOString();
   todo.updatedAt = new Date().toISOString();
 
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.json({ ok: true, subtask });
 });
 
 app.delete('/api/todos/:id/subtasks/:subtaskId', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   const subtaskId = parseId(req.params.subtaskId);
   if (!id || !subtaskId) {
@@ -3757,12 +3854,12 @@ app.delete('/api/todos/:id/subtasks/:subtaskId', async (req, res) => {
 
   todo.subtasks = next;
   todo.updatedAt = new Date().toISOString();
-  await writeStore(todos, categories, filterPresets);
+  await writeStore(todos, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.status(204).send();
 });
 
 app.delete('/api/todos/:id', async (req, res) => {
-  const { todos, categories, filterPresets } = await loadStore();
+  const { todos, categories, filterPresets, notifications, notificationPreferences, appSettings } = await loadStore();
   const id = parseId(req.params.id);
   if (!id) {
     return res.status(400).json({ error: 'Invalid id' });
@@ -3771,7 +3868,7 @@ app.delete('/api/todos/:id', async (req, res) => {
   if (next.length === todos.length) {
     return res.status(404).json({ error: 'Todo not found' });
   }
-  await writeStore(next, categories, filterPresets);
+  await writeStore(next, categories, filterPresets, notifications, notificationPreferences, appSettings);
   res.status(204).send();
 });
 
