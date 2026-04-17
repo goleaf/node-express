@@ -1,0 +1,142 @@
+<%
+  const isActiveTab = (tab) => activeTab === tab;
+  const tabClass = (tab) =>
+    isActiveTab(tab)
+      ? 'border-b-2 border-md-primary text-md-primary'
+      : 'border-b-2 border-transparent text-md-on-surface-variant';
+  const appBarConfig = {
+    title: 'Profile',
+    subtitle: 'Account and preferences',
+  };
+%>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <div class="min-h-screen bg-md-background text-md-on-background">
+      <%- include('../partials/top-app-bar') %>
+
+      <main class="mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-20 sm:max-w-4xl">
+        <header class="rounded-md-extra-large bg-md-surface p-5 shadow-sm ring-1 ring-md-outline-variant/60">
+          <div class="flex items-center gap-4">
+            <div class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-md-full bg-md-secondary-container text-md-title-large text-md-on-secondary-container">
+              <% if (user.avatar) { %>
+                <img src="<%= user.avatar %>" alt="<%= user.name %>" class="h-full w-full object-cover">
+              <% } else { %>
+                <%= user.name.charAt(0).toUpperCase() %>
+              <% } %>
+            </div>
+            <div class="min-w-0">
+              <p class="truncate text-md-title-large text-md-on-surface"><%= user.name %></p>
+              <p class="truncate text-md-body-medium text-md-on-surface-variant"><%= user.email %></p>
+              <p class="mt-2 text-md-body-small text-md-on-surface-variant"><%= user.task_count %> tasks · <%= user.completed_task_count %> completed</p>
+            </div>
+          </div>
+        </header>
+
+        <nav aria-label="Profile sections" class="mt-5 flex border-b border-md-outline-variant">
+          <a href="/profile?tab=profile" class="touch-target flex-1 py-3 text-center text-md-label-large <%= tabClass('profile') %>">Profile</a>
+          <a href="/profile?tab=password" class="touch-target flex-1 py-3 text-center text-md-label-large <%= tabClass('password') %>">Password</a>
+          <a href="/profile?tab=preferences" class="touch-target flex-1 py-3 text-center text-md-label-large <%= tabClass('preferences') %>">Preferences</a>
+          <a href="/profile?tab=danger" class="touch-target flex-1 py-3 text-center text-md-label-large <%= tabClass('danger') %>">Danger Zone</a>
+        </nav>
+
+        <section class="mt-5">
+          <% if (isActiveTab('profile')) { %>
+            <form action="/profile/details" method="post" enctype="multipart/form-data" class="space-y-4 rounded-md-extra-large bg-md-surface p-5 shadow-sm ring-1 ring-md-outline-variant/60">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div>
+                <label for="name" class="mb-2 block text-md-label-large text-md-on-surface">Name</label>
+                <input id="name" name="name" type="text" value="<%= user.name %>" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              </div>
+              <div>
+                <label for="email" class="mb-2 block text-md-label-large text-md-on-surface">Email</label>
+                <input id="email" name="email" type="email" value="<%= user.email %>" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              </div>
+              <div>
+                <label for="avatar" class="mb-2 block text-md-label-large text-md-on-surface">Avatar</label>
+                <input id="avatar" name="avatar" type="file" accept="image/jpeg,image/png,image/webp" class="block w-full text-md-body-medium text-md-on-surface-variant">
+              </div>
+              <button type="submit" class="w-full rounded-md-full bg-md-primary px-4 py-3 text-md-label-large text-md-on-primary">Save profile</button>
+            </form>
+          <% } %>
+
+          <% if (isActiveTab('password')) { %>
+            <form action="/profile/password" method="post" class="space-y-4 rounded-md-extra-large bg-md-surface p-5 shadow-sm ring-1 ring-md-outline-variant/60">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div>
+                <label for="current_password" class="mb-2 block text-md-label-large text-md-on-surface">Current password</label>
+                <input id="current_password" name="current_password" type="password" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              </div>
+              <div>
+                <label for="password" class="mb-2 block text-md-label-large text-md-on-surface">New password</label>
+                <input id="password" name="password" type="password" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              </div>
+              <div>
+                <label for="password_confirmation" class="mb-2 block text-md-label-large text-md-on-surface">Confirm new password</label>
+                <input id="password_confirmation" name="password_confirmation" type="password" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              </div>
+              <button type="submit" class="w-full rounded-md-full bg-md-primary px-4 py-3 text-md-label-large text-md-on-primary">Update password</button>
+            </form>
+          <% } %>
+
+          <% if (isActiveTab('preferences')) { %>
+            <form action="/profile/preferences" method="post" class="space-y-4 rounded-md-extra-large bg-md-surface p-5 shadow-sm ring-1 ring-md-outline-variant/60">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+              <div>
+                <label for="theme" class="mb-2 block text-md-label-large text-md-on-surface">Theme</label>
+                <select id="theme" name="theme" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface">
+                  <% ['light', 'dark', 'system'].forEach((theme) => { %>
+                    <option value="<%= theme %>" <%= user.theme_preference === theme ? 'selected' : '' %>><%= theme.charAt(0).toUpperCase() + theme.slice(1) %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div>
+                <label for="default_priority" class="mb-2 block text-md-label-large text-md-on-surface">Default priority</label>
+                <select id="default_priority" name="default_priority" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface">
+                  <% ['low', 'medium', 'high', 'urgent'].forEach((priority) => { %>
+                    <option value="<%= priority %>" <%= user.default_priority === priority ? 'selected' : '' %>><%= priority.charAt(0).toUpperCase() + priority.slice(1) %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <div>
+                <label for="default_view" class="mb-2 block text-md-label-large text-md-on-surface">Default view</label>
+                <select id="default_view" name="default_view" class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface">
+                  <% ['list', 'board', 'calendar'].forEach((view) => { %>
+                    <option value="<%= view %>" <%= user.default_view === view ? 'selected' : '' %>><%= view.charAt(0).toUpperCase() + view.slice(1) %></option>
+                  <% }) %>
+                </select>
+              </div>
+              <button type="submit" class="w-full rounded-md-full bg-md-primary px-4 py-3 text-md-label-large text-md-on-primary">Save preferences</button>
+            </form>
+          <% } %>
+
+          <% if (isActiveTab('danger')) { %>
+            <section class="space-y-4 rounded-md-extra-large border border-md-error bg-md-error-container/40 p-5 shadow-sm">
+              <div>
+                <p class="text-md-title-large text-md-on-surface">Delete account</p>
+                <p class="mt-2 text-md-body-medium text-md-on-surface-variant">
+                  This removes your user record, destroys your session, deletes uploaded files, and soft-deletes your tasks before account removal.
+                </p>
+              </div>
+              <form action="/profile/delete-account" method="post">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <button type="submit" class="w-full rounded-md-full bg-md-error px-4 py-3 text-md-label-large text-md-on-error">Delete account permanently</button>
+              </form>
+            </section>
+          <% } %>
+        </section>
+      </main>
+
+      <%- include('../partials/bottom-nav') %>
+      <%- include('../partials/toast-container') %>
+    </div>
+  </body>
+</html>

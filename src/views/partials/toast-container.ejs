@@ -1,0 +1,17 @@
+<%
+  const initialToasts = JSON.stringify(
+    (Array.isArray(flashMessages) ? flashMessages : [])
+      .map((flash) => ({
+        type: flash.type || 'info',
+        message: flash.message || flash.text || '',
+      }))
+      .filter((flash) => flash.message),
+  ).replace(/</g, '\\u003c');
+%>
+<div
+  data-toast-container
+  aria-live="polite"
+  aria-atomic="false"
+  class="pointer-events-none fixed bottom-24 left-4 right-4 z-50 flex flex-col gap-2"
+></div>
+<script type="application/json" data-initial-toasts><%- initialToasts %></script>

@@ -1,0 +1,26 @@
+<%
+  const safeCspNonce = typeof cspNonce === 'string' ? cspNonce : '';
+  const safeCurrentUser = typeof currentUser === 'undefined' ? null : currentUser;
+%>
+<script nonce="<%= safeCspNonce %>">
+  (() => {
+    const serverTheme = '<%= safeCurrentUser?.theme_preference || 'system' %>';
+    let theme = serverTheme;
+
+    try {
+      const storedTheme = window.localStorage.getItem('theme');
+
+      if (storedTheme === 'light' || storedTheme === 'dark' || storedTheme === 'system') {
+        theme = storedTheme;
+      }
+    } catch {
+      theme = serverTheme;
+    }
+
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const useDarkTheme = theme === 'dark' || (theme === 'system' && prefersDark);
+
+    document.documentElement.classList.toggle('dark', useDarkTheme);
+    document.documentElement.dataset.theme = theme;
+  })();
+</script>

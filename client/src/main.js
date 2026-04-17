@@ -1,0 +1,31 @@
+import './styles/main.css';
+import { BottomSheet } from './components/BottomSheet.js';
+import { BottomNav } from './components/BottomNav.js';
+import { CategoryManager } from './components/CategoryManager.js';
+import { NotificationBell } from './components/NotificationBell.js';
+import { OfflineBanner } from './components/OfflineBanner.js';
+import { OnboardingFlow } from './components/OnboardingFlow.js';
+import { PageTransition } from './components/PageTransition.js';
+import { Search } from './components/Search.js';
+import { TaskDetail } from './components/TaskDetail.js';
+import { TaskForm } from './components/TaskForm.js';
+import { TaskList } from './components/TaskList.js';
+import { ThemeSwitcher } from './components/ThemeSwitcher.js';
+import { ToastManager } from './components/Toast.js';
+
+document.addEventListener('DOMContentLoaded', () => {
+  window.Toast = new ToastManager();
+  BottomSheet.boot();
+  new BottomNav();
+  new CategoryManager();
+  new NotificationBell();
+  new OfflineBanner();
+  new OnboardingFlow();
+  new PageTransition();
+  new Search();
+  new TaskDetail();
+  const taskList = new TaskList();
+  taskList.hydrate?.();
+  new TaskForm();
+  new ThemeSwitcher();
+});

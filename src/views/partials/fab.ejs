@@ -1,0 +1,19 @@
+<% if (fabConfig && fabConfig.href) { %>
+  <a
+    href="<%= fabConfig.href %>"
+    data-floating-action
+    class="touch-target animate-fab-in fixed bottom-24 right-4 z-50 h-14 w-14 rounded-md-large bg-md-primary text-md-on-primary shadow-lg"
+    aria-label="<%= fabConfig.label || 'Add new task' %>"
+  >
+    <% if (fabConfig.icon === 'search') { %>
+      <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2">
+        <path d="M11 5a6 6 0 1 1 0 12 6 6 0 0 1 0-12z" />
+        <path d="M20 20l-4.2-4.2" stroke-linecap="round" />
+      </svg>
+    <% } else { %>
+      <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2">
+        <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+      </svg>
+    <% } %>
+  </a>
+<% } %>

@@ -1,0 +1,10 @@
+<div class="flex items-center justify-center gap-2">
+  <% [1, 2, 3].forEach((stepNumber) => { %>
+    <% const isCurrent = currentStep === stepNumber; %>
+    <% const isCompleted = currentStep > stepNumber; %>
+    <span
+      class="<%= isCurrent ? 'w-4 bg-md-primary' : 'w-2 ' + (isCompleted ? 'bg-md-primary' : 'bg-md-outline') %> h-2 rounded-full transition-all duration-long1 ease-standard"
+      aria-hidden="true"
+    ></span>
+  <% }) %>
+</div>

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <main role="main" data-onboarding-page class="animate-onboarding-enter mx-auto flex min-h-screen w-full max-w-md flex-col justify-between bg-md-background px-6 py-8 sm:max-w-lg">
+      <div>
+        <%- include('./partials/progress-dots', { currentStep }) %>
+        <div class="mt-8">
+          <p class="text-md-headline-small text-md-on-background">Finish the setup</p>
+          <p class="mt-2 text-md-body-large text-md-on-surface-variant">Choose how the app should look and what priority new tasks should start with.</p>
+        </div>
+
+        <form action="/onboarding/complete" method="post" class="mt-8 space-y-6 rounded-md-extra-large bg-md-surface p-5 shadow-sm ring-1 ring-md-outline-variant/60">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <input type="hidden" name="theme" value="<%= currentUser?.theme_preference || 'system' %>" data-onboarding-theme-input>
+
+          <section>
+            <p class="mb-3 text-md-label-large text-md-on-surface">Theme</p>
+            <div class="inline-flex w-full rounded-md-full border border-md-outline p-1">
+              <button type="button" data-theme-option="light" aria-pressed="<%= (currentUser?.theme_preference || 'system') === 'light' ? 'true' : 'false' %>" class="flex-1 rounded-md-full px-4 py-3 text-md-label-large transition-colors <%= (currentUser?.theme_preference || 'system') === 'light' ? 'bg-md-primary text-md-on-primary' : 'text-md-on-surface-variant' %>">Light</button>
+              <button type="button" data-theme-option="dark" aria-pressed="<%= (currentUser?.theme_preference || 'system') === 'dark' ? 'true' : 'false' %>" class="flex-1 rounded-md-full px-4 py-3 text-md-label-large transition-colors <%= (currentUser?.theme_preference || 'system') === 'dark' ? 'bg-md-primary text-md-on-primary' : 'text-md-on-surface-variant' %>">Dark</button>
+              <button type="button" data-theme-option="system" aria-pressed="<%= (currentUser?.theme_preference || 'system') === 'system' ? 'true' : 'false' %>" class="flex-1 rounded-md-full px-4 py-3 text-md-label-large transition-colors <%= (currentUser?.theme_preference || 'system') === 'system' ? 'bg-md-primary text-md-on-primary' : 'text-md-on-surface-variant' %>">System</button>
+            </div>
+          </section>
+
+          <section>
+            <label for="onboarding-default-priority" class="mb-2 block text-md-label-large text-md-on-surface">Default priority</label>
+            <select id="onboarding-default-priority" name="default_priority" class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              <option value="low" <%= (currentUser?.default_priority || 'medium') === 'low' ? 'selected' : '' %>>Low</option>
+              <option value="medium" <%= (currentUser?.default_priority || 'medium') === 'medium' ? 'selected' : '' %>>Medium</option>
+              <option value="high" <%= (currentUser?.default_priority || 'medium') === 'high' ? 'selected' : '' %>>High</option>
+              <option value="urgent" <%= (currentUser?.default_priority || 'medium') === 'urgent' ? 'selected' : '' %>>Urgent</option>
+            </select>
+          </section>
+
+          <button type="submit" class="w-full rounded-md-full bg-md-primary py-4 text-md-label-large text-md-on-primary">Finish setup</button>
+        </form>
+      </div>
+
+      <div class="mt-8 flex items-center justify-between gap-3">
+        <a href="/onboarding/step-2" data-onboarding-link class="text-md-label-large text-md-on-surface-variant">Back</a>
+      </div>
+    </main>
+  </body>
+</html>

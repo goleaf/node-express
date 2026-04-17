@@ -1,0 +1,105 @@
+const materialSpacing = {
+  'md-0': '0rem',
+  'md-1': '0.25rem',
+  'md-2': '0.5rem',
+  'md-3': '0.75rem',
+  'md-4': '1rem',
+  'md-5': '1.25rem',
+  'md-6': '1.5rem',
+  'md-8': '2rem',
+  'md-10': '2.5rem',
+  'md-12': '3rem',
+  'md-16': '4rem',
+  'md-20': '5rem',
+};
+
+const materialTypeScale = {
+  'md-display-large': ['3.5625rem', { lineHeight: '4rem', letterSpacing: '-0.015625rem', fontWeight: '400' }],
+  'md-display-medium': ['2.8125rem', { lineHeight: '3.25rem', letterSpacing: '0rem', fontWeight: '400' }],
+  'md-display-small': ['2.25rem', { lineHeight: '2.75rem', letterSpacing: '0rem', fontWeight: '400' }],
+  'md-headline-large': ['2rem', { lineHeight: '2.5rem', letterSpacing: '0rem', fontWeight: '400' }],
+  'md-headline-medium': ['1.75rem', { lineHeight: '2.25rem', letterSpacing: '0rem', fontWeight: '400' }],
+  'md-headline-small': ['1.5rem', { lineHeight: '2rem', letterSpacing: '0rem', fontWeight: '400' }],
+  'md-title-large': ['1.375rem', { lineHeight: '1.75rem', letterSpacing: '0rem', fontWeight: '400' }],
+  'md-title-medium': ['1rem', { lineHeight: '1.5rem', letterSpacing: '0.009375rem', fontWeight: '500' }],
+  'md-title-small': ['0.875rem', { lineHeight: '1.25rem', letterSpacing: '0.00625rem', fontWeight: '500' }],
+  'md-body-large': ['1rem', { lineHeight: '1.5rem', letterSpacing: '0.03125rem', fontWeight: '400' }],
+  'md-body-medium': ['0.875rem', { lineHeight: '1.25rem', letterSpacing: '0.015625rem', fontWeight: '400' }],
+  'md-body-small': ['0.75rem', { lineHeight: '1rem', letterSpacing: '0.025rem', fontWeight: '400' }],
+  'md-label-large': ['0.875rem', { lineHeight: '1.25rem', letterSpacing: '0.00625rem', fontWeight: '500' }],
+  'md-label-medium': ['0.75rem', { lineHeight: '1rem', letterSpacing: '0.03125rem', fontWeight: '500' }],
+  'md-label-small': ['0.6875rem', { lineHeight: '1rem', letterSpacing: '0.03125rem', fontWeight: '500' }],
+};
+
+const colorFromVariable = (token) => `rgb(var(${token}) / <alpha-value>)`;
+
+export default {
+  darkMode: 'class',
+  content: ['./src/views/**/*.ejs', './client/src/**/*.js'],
+  theme: {
+    extend: {
+      colors: {
+        'md-primary': colorFromVariable('--md-primary'),
+        'md-on-primary': colorFromVariable('--md-on-primary'),
+        'md-primary-container': colorFromVariable('--md-primary-container'),
+        'md-on-primary-container': colorFromVariable('--md-on-primary-container'),
+        'md-secondary': colorFromVariable('--md-secondary'),
+        'md-on-secondary': colorFromVariable('--md-on-secondary'),
+        'md-secondary-container': colorFromVariable('--md-secondary-container'),
+        'md-on-secondary-container': colorFromVariable('--md-on-secondary-container'),
+        'md-tertiary': colorFromVariable('--md-tertiary'),
+        'md-on-tertiary': colorFromVariable('--md-on-tertiary'),
+        'md-tertiary-container': colorFromVariable('--md-tertiary-container'),
+        'md-on-tertiary-container': colorFromVariable('--md-on-tertiary-container'),
+        'md-error': colorFromVariable('--md-error'),
+        'md-on-error': colorFromVariable('--md-on-error'),
+        'md-error-container': colorFromVariable('--md-error-container'),
+        'md-on-error-container': colorFromVariable('--md-on-error-container'),
+        'md-background': colorFromVariable('--md-background'),
+        'md-on-background': colorFromVariable('--md-on-background'),
+        'md-surface': colorFromVariable('--md-surface'),
+        'md-on-surface': colorFromVariable('--md-on-surface'),
+        'md-surface-variant': colorFromVariable('--md-surface-variant'),
+        'md-on-surface-variant': colorFromVariable('--md-on-surface-variant'),
+        'md-outline': colorFromVariable('--md-outline'),
+        'md-outline-variant': colorFromVariable('--md-outline-variant'),
+      },
+      spacing: materialSpacing,
+      fontSize: materialTypeScale,
+      borderRadius: {
+        'md-extra-small': '4px',
+        'md-small': '8px',
+        'md-medium': '12px',
+        'md-large': '16px',
+        'md-extra-large': '28px',
+        'md-full': '9999px',
+      },
+      fontFamily: {
+        sans: ['Roboto Flex', 'Segoe UI', 'system-ui', 'sans-serif'],
+      },
+      transitionDuration: {
+        short1: '50ms',
+        short2: '100ms',
+        medium1: '200ms',
+        medium2: '300ms',
+        long1: '400ms',
+        long2: '500ms',
+      },
+      transitionTimingFunction: {
+        standard: 'cubic-bezier(0.2,0,0,1)',
+        decelerate: 'cubic-bezier(0,0,0,1)',
+        accelerate: 'cubic-bezier(0.3,0,1,1)',
+        emphasized: 'cubic-bezier(0.2,0,0,1)',
+      },
+      keyframes: {
+        shimmer: {
+          from: { backgroundPosition: '-200% 0' },
+          to: { backgroundPosition: '200% 0' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 1.5s linear infinite',
+      },
+    },
+  },
+};

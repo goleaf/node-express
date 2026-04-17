@@ -1,0 +1,113 @@
+<%
+  const initialUnreadCount = Number(typeof unreadCount !== 'undefined' ? unreadCount : 0);
+%>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <div data-task-list-page data-current-filter="<%= activeFilter || 'all' %>">
+      <header class="fixed inset-x-0 top-0 z-40 h-16 border-b border-md-outline-variant bg-md-surface/95 backdrop-blur">
+        <div class="mx-auto flex h-16 w-full max-w-md items-center justify-between px-4 sm:max-w-4xl">
+          <div class="min-w-0">
+            <p class="text-md-title-large text-md-on-surface">Todo Flow</p>
+            <p class="text-md-body-small text-md-on-surface-variant">Your mobile task hub</p>
+          </div>
+          <div class="flex items-center gap-2" data-notification-root>
+            <div class="relative">
+              <button
+                type="button"
+                data-notification-bell
+                class="touch-target relative rounded-md-full text-md-on-surface"
+                aria-label="Notifications, <%= initialUnreadCount %> unread"
+              >
+                <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="1.8">
+                  <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M10 19a2 2 0 0 0 4 0" stroke-linecap="round" />
+                </svg>
+                <span data-notification-badge aria-live="polite" aria-label="<%= initialUnreadCount %> unread notifications" class="absolute right-1 top-1 hidden min-w-[1.1rem] rounded-md-full bg-md-error px-1.5 py-0.5 text-center text-md-label-small leading-none text-md-on-error"><%= initialUnreadCount %></span>
+              </button>
+
+              <section
+                data-notification-dropdown
+                class="fixed right-4 top-16 z-50 hidden w-[min(22rem,calc(100vw-2rem))] max-h-96 overflow-y-auto rounded-md-large bg-md-surface shadow-lg ring-1 ring-md-outline-variant"
+              >
+                <div class="flex items-center justify-between border-b border-md-outline-variant px-4 py-3">
+                  <p class="text-md-title-medium text-md-on-surface">Notifications</p>
+                  <button
+                    type="button"
+                    data-notification-mark-all
+                    class="text-md-label-large text-md-primary"
+                  >
+                    Mark all read
+                  </button>
+                </div>
+                <div data-notification-empty>
+                  <%- include('../partials/empty-notifications') %>
+                </div>
+                <div data-notification-list></div>
+              </section>
+            </div>
+            <button type="button" class="touch-target rounded-md-full bg-md-secondary-container text-md-label-large text-md-on-secondary-container" aria-label="Profile">
+              <%= currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U' %>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <section class="fixed inset-x-0 top-16 z-30 bg-md-background/95 pb-3 pt-3 backdrop-blur">
+        <div class="mx-auto flex w-full max-w-md gap-2 overflow-x-auto px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-4xl">
+          <% ['all', 'today', 'overdue', 'pending', 'completed'].forEach((filterKey) => { %>
+            <% const active = (activeFilter || 'all') === filterKey; %>
+            <% const label = filterKey === 'all' ? 'All' : filterKey.charAt(0).toUpperCase() + filterKey.slice(1); %>
+            <button
+              type="button"
+              data-filter-chip
+              data-filter="<%= filterKey %>"
+              class="touch-target shrink-0 rounded-md-full px-4 py-2 text-md-label-large transition-colors <%= active ? 'bg-md-secondary-container text-md-on-secondary-container' : 'border border-md-outline text-md-on-surface-variant' %>"
+            >
+              <%= label %>
+            </button>
+          <% }) %>
+        </div>
+      </section>
+
+      <main role="main" class="mx-auto mt-16 mb-20 w-full max-w-md px-4 pt-16 sm:max-w-4xl">
+        <section data-task-list data-task-list-loading="true" class="space-y-2">
+          <% for (let index = 0; index < 5; index += 1) { %>
+            <%- include('../partials/skeletons/_task-card-skeleton') %>
+          <% } %>
+        </section>
+      </main>
+
+      <%- include('../partials/toast-container') %>
+
+      <a href="/tasks/new" data-floating-action class="touch-target fixed bottom-24 right-4 z-40 h-14 w-14 rounded-md-large bg-md-primary text-md-on-primary shadow-lg" aria-label="Add new task">
+        <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2">
+          <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+        </svg>
+      </a>
+
+      <nav data-bottom-nav role="navigation" aria-label="Main navigation" class="fixed inset-x-0 bottom-0 z-40 flex h-20 items-center justify-around border-t border-md-outline-variant bg-md-surface">
+        <a href="/dashboard" data-bottom-nav-item tabindex="-1" class="touch-target flex flex-col items-center gap-1 text-md-label-medium text-md-on-surface-variant">
+          <span>Home</span>
+        </a>
+        <a href="/tasks" data-bottom-nav-item tabindex="0" aria-current="page" class="touch-target flex flex-col items-center gap-1 text-md-label-medium text-md-primary">
+          <span>Tasks</span>
+        </a>
+        <a href="/categories" data-bottom-nav-item tabindex="-1" class="touch-target flex flex-col items-center gap-1 text-md-label-medium text-md-on-surface-variant">
+          <span>Lists</span>
+        </a>
+        <a href="/profile" data-bottom-nav-item tabindex="-1" class="touch-target flex flex-col items-center gap-1 text-md-label-medium text-md-on-surface-variant">
+          <span>Profile</span>
+        </a>
+      </nav>
+    </div>
+  </body>
+</html>

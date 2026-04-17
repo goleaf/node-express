@@ -1,0 +1,286 @@
+<%
+  const serialize = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
+  const isCategoriesTab = activeTab !== 'tags';
+  const tabButtonClasses = (active) =>
+    active
+      ? 'bg-md-secondary-container text-md-on-secondary-container shadow-sm'
+      : 'bg-transparent text-md-on-surface-variant';
+  const appBarConfig = {
+    title: 'Lists',
+    subtitle: 'Organize your categories and tags',
+  };
+%>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <%- include('../partials/top-app-bar') %>
+    <div
+      data-category-manager-page
+      data-active-tab="<%= activeTab %>"
+      data-categories-endpoint="/categories"
+      data-tags-endpoint="/tags"
+      class="min-h-screen"
+    >
+      <main class="mx-auto max-w-md px-4 pb-28 pt-20 sm:max-w-4xl">
+        <section class="rounded-md-large bg-md-surface p-2 shadow-sm">
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              data-manager-tab="categories"
+              class="touch-target rounded-md-full px-4 py-3 text-md-label-large transition-colors <%= tabButtonClasses(isCategoriesTab) %>"
+            >
+              Categories
+            </button>
+            <button
+              type="button"
+              data-manager-tab="tags"
+              class="touch-target rounded-md-full px-4 py-3 text-md-label-large transition-colors <%= tabButtonClasses(!isCategoriesTab) %>"
+            >
+              Tags
+            </button>
+          </div>
+        </section>
+
+        <section class="mt-4 space-y-3">
+          <div
+            data-manager-panel="categories"
+            class="<%= isCategoriesTab ? '' : 'hidden' %>"
+          >
+            <div data-manager-list="categories" class="space-y-3">
+              <% if (categories.length === 0) { %>
+                <article class="rounded-md-medium border border-dashed border-md-outline bg-md-surface p-4 text-md-body-medium text-md-on-surface-variant">
+                  No categories yet. Add one to group your tasks.
+                </article>
+              <% } %>
+
+              <% categories.forEach((category) => { %>
+                <article class="rounded-md-medium border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md-full border shadow-sm"
+                      style="--item-color:<%= category.color %>;--item-color-bg:<%= category.color %>20;--item-color-border:<%= category.color %>66;background-color:var(--item-color-bg);color:var(--item-color);border-color:var(--item-color-border);"
+                    >
+                      <span class="text-md-label-medium uppercase tracking-[0.08em]"><%= category.icon.slice(0, 2) %></span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-md-title-medium text-md-on-surface"><%= category.name %></p>
+                      <p class="mt-1 touch-target inline-flex rounded-md-full bg-md-surface-variant px-3 py-1 text-md-label-medium text-md-on-surface-variant">
+                        <%= category.task_count %> tasks
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        data-edit-item
+                        data-kind="categories"
+                        data-item-id="<%= category.id %>"
+                        class="touch-target rounded-md-full text-md-on-surface-variant"
+                        aria-label="Edit category"
+                      >
+                        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                          <path d="M4 20h4l10-10-4-4L4 16v4z" stroke-linejoin="round" />
+                          <path d="M13 7l4 4" stroke-linecap="round" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        data-delete-item
+                        data-kind="categories"
+                        data-item-id="<%= category.id %>"
+                        class="touch-target rounded-md-full text-md-error"
+                        aria-label="Delete category"
+                      >
+                        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                          <path d="M4 7h16" stroke-linecap="round" />
+                          <path d="M9 7V5h6v2" stroke-linecap="round" stroke-linejoin="round" />
+                          <path d="M7 7l1 12h8l1-12" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              <% }) %>
+            </div>
+          </div>
+
+          <div
+            data-manager-panel="tags"
+            class="<%= isCategoriesTab ? 'hidden' : '' %>"
+          >
+            <div data-manager-list="tags" class="space-y-3">
+              <% if (tags.length === 0) { %>
+                <article class="rounded-md-medium border border-dashed border-md-outline bg-md-surface p-4 text-md-body-medium text-md-on-surface-variant">
+                  No tags yet. Add one for quick filtering.
+                </article>
+              <% } %>
+
+              <% tags.forEach((tag) => { %>
+                <article class="rounded-md-medium border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="flex h-12 w-12 shrink-0 items-center justify-center rounded-md-full border shadow-sm"
+                      style="--item-color:<%= tag.color %>;--item-color-bg:<%= tag.color %>20;--item-color-border:<%= tag.color %>66;background-color:var(--item-color-bg);color:var(--item-color);border-color:var(--item-color-border);"
+                    >
+                      <span class="text-md-label-medium uppercase tracking-[0.08em]">TG</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <p class="truncate text-md-title-medium text-md-on-surface"><%= tag.name %></p>
+                      <p class="mt-1 touch-target inline-flex rounded-md-full bg-md-surface-variant px-3 py-1 text-md-label-medium text-md-on-surface-variant">
+                        <%= tag.task_count %> tasks
+                      </p>
+                    </div>
+                    <div class="flex items-center gap-1">
+                      <button
+                        type="button"
+                        data-edit-item
+                        data-kind="tags"
+                        data-item-id="<%= tag.id %>"
+                        class="touch-target rounded-md-full text-md-on-surface-variant"
+                        aria-label="Edit tag"
+                      >
+                        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                          <path d="M4 20h4l10-10-4-4L4 16v4z" stroke-linejoin="round" />
+                          <path d="M13 7l4 4" stroke-linecap="round" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        data-delete-item
+                        data-kind="tags"
+                        data-item-id="<%= tag.id %>"
+                        class="touch-target rounded-md-full text-md-error"
+                        aria-label="Delete tag"
+                      >
+                        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                          <path d="M4 7h16" stroke-linecap="round" />
+                          <path d="M9 7V5h6v2" stroke-linecap="round" stroke-linejoin="round" />
+                          <path d="M7 7l1 12h8l1-12" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              <% }) %>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      <div data-manager-form-shell class="pointer-events-none fixed inset-x-0 bottom-20 z-50 hidden">
+        <div class="mx-auto max-w-md px-4 pb-4 sm:max-w-4xl">
+          <section class="pointer-events-auto rounded-md-extra-large border border-md-outline-variant bg-md-surface p-4 shadow-2xl">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <p data-form-heading class="text-md-title-large text-md-on-surface">New category</p>
+                <p data-form-subheading class="text-md-body-small text-md-on-surface-variant">Create a new list color and icon.</p>
+              </div>
+              <button
+                type="button"
+                data-close-manager-form
+                class="touch-target rounded-md-full text-md-on-surface-variant"
+                aria-label="Close form"
+              >
+                <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                  <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+                </svg>
+              </button>
+            </div>
+
+            <form data-manager-form class="mt-4 space-y-4">
+              <input type="hidden" name="id" value="">
+              <input type="hidden" name="color" value="<%= colorSwatches[0] %>">
+              <input type="hidden" name="icon" value="<%= categoryIcons[0] %>">
+
+              <div>
+                <label class="mb-2 block text-md-label-large text-md-on-surface" for="manager-name">Name</label>
+                <input
+                  id="manager-name"
+                  name="name"
+                  type="text"
+                  class="w-full rounded-md-small border border-md-outline bg-transparent px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+                  placeholder="Personal, Work, Finance"
+                >
+                <p data-error-for="name" class="mt-2 hidden text-md-body-small text-md-error"></p>
+              </div>
+
+              <div>
+                <p class="mb-2 text-md-label-large text-md-on-surface">Color</p>
+                <div data-color-grid class="grid grid-cols-6 gap-3">
+                  <% colorSwatches.forEach((color, index) => { %>
+                    <button
+                      type="button"
+                      data-color-swatch
+                      data-color="<%= color %>"
+                      aria-pressed="<%= index === 0 ? 'true' : 'false' %>"
+                      class="touch-target rounded-md-full border-2 <%= index === 0 ? 'border-md-on-surface' : 'border-transparent' %>"
+                      style="background-color: <%= color %>;"
+                    >
+                      <span class="sr-only"><%= color %></span>
+                    </button>
+                  <% }) %>
+                </div>
+                <p data-error-for="color" class="mt-2 hidden text-md-body-small text-md-error"></p>
+              </div>
+
+              <div data-icon-section>
+                <p class="mb-2 text-md-label-large text-md-on-surface">Icon</p>
+                <div class="max-h-44 overflow-y-auto rounded-md-small border border-md-outline p-2">
+                  <div data-icon-grid class="grid grid-cols-3 gap-2">
+                    <% categoryIcons.forEach((icon, index) => { %>
+                      <button
+                        type="button"
+                        data-icon-option
+                        data-icon="<%= icon %>"
+                        aria-pressed="<%= index === 0 ? 'true' : 'false' %>"
+                        class="touch-target flex flex-col items-center justify-center gap-2 rounded-md-small border px-3 py-3 text-center text-md-body-small <%= index === 0 ? 'border-md-primary bg-md-primary-container text-md-on-primary-container' : 'border-md-outline text-md-on-surface-variant' %>"
+                      >
+                        <span class="text-md-label-medium uppercase tracking-[0.08em]"><%= icon.slice(0, 2) %></span>
+                        <span class="truncate"><%= icon %></span>
+                      </button>
+                    <% }) %>
+                  </div>
+                </div>
+                <p data-error-for="icon" class="mt-2 hidden text-md-body-small text-md-error"></p>
+              </div>
+
+              <p data-error-for="form" class="hidden text-md-body-small text-md-error"></p>
+
+              <button
+                type="submit"
+                data-submit-manager-form
+                class="w-full rounded-md-full bg-md-primary px-4 py-3 text-md-label-large text-md-on-primary"
+              >
+                Save
+              </button>
+            </form>
+          </section>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        data-open-manager-form
+        data-floating-action
+        class="touch-target animate-fab-in fixed bottom-24 right-4 z-40 h-14 w-14 rounded-md-large bg-md-primary text-md-on-primary shadow-lg"
+        aria-label="Add item"
+      >
+        <svg viewBox="0 0 24 24" class="h-6 w-6 fill-none stroke-current" stroke-width="2">
+          <path d="M12 5v14M5 12h14" stroke-linecap="round" />
+        </svg>
+      </button>
+
+      <script type="application/json" data-categories-json><%- serialize(categories) %></script>
+      <script type="application/json" data-tags-json><%- serialize(tags) %></script>
+    </div>
+    <%- include('../partials/bottom-nav') %>
+    <%- include('../partials/toast-container') %>
+  </body>
+</html>

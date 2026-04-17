@@ -1,0 +1,55 @@
+<%
+  const barConfig = appBarConfig || {};
+  const showBackButton = Boolean(barConfig.showBack);
+  const backHref = barConfig.backHref || '/';
+  const appBarTitle = barConfig.title || title || 'Todo';
+  const appBarSubtitle = barConfig.subtitle || null;
+  const rightActions = Array.isArray(barConfig.actions) ? barConfig.actions : [];
+%>
+<header class="fixed left-0 right-0 top-0 z-50 border-b border-md-outline-variant bg-md-surface pt-[env(safe-area-inset-top)]">
+  <div class="flex h-16 items-center gap-3 px-4">
+    <% if (showBackButton) { %>
+      <a
+        href="<%= backHref %>"
+        class="touch-target rounded-md-full text-md-on-surface"
+        aria-label="Go back"
+      >
+        <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+          <path d="M15 6l-6 6 6 6" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </a>
+    <% } else { %>
+      <div class="h-10 w-10"></div>
+    <% } %>
+
+    <div class="min-w-0 flex-1">
+      <p class="truncate text-md-title-large text-md-on-surface"><%= appBarTitle %></p>
+      <% if (appBarSubtitle) { %>
+        <p class="truncate text-md-body-small text-md-on-surface-variant"><%= appBarSubtitle %></p>
+      <% } %>
+    </div>
+
+    <% if (rightActions.length > 0) { %>
+      <div class="flex items-center gap-2">
+        <% rightActions.forEach((action) => { %>
+          <a
+            href="<%= action.href || '#' %>"
+            class="touch-target rounded-md-full px-3 text-md-label-large text-md-on-surface-variant"
+            aria-label="<%= action.label || action.text || 'Action' %>"
+          >
+            <% if (action.icon === 'search') { %>
+              <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                <path d="M11 5a6 6 0 1 1 0 12 6 6 0 0 1 0-12z" />
+                <path d="M20 20l-4.2-4.2" stroke-linecap="round" />
+              </svg>
+            <% } else if (action.text) { %>
+              <span><%= action.text %></span>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="h-10 w-10"></div>
+    <% } %>
+  </div>
+</header>

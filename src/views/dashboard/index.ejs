@@ -1,0 +1,177 @@
+<%
+  const sparklineMax = Math.max(...stats.daily_completions.map((entry) => entry.count), 1);
+  const categoryTotal = stats.tasks_by_category.reduce((total, entry) => total + entry.count, 0) || 1;
+  const statCards = [
+    { label: 'Total tasks', value: stats.total_tasks },
+    { label: 'Completed today', value: stats.completed_today },
+    { label: 'Pending', value: stats.pending_count },
+    { label: 'Overdue', value: stats.overdue_count },
+  ];
+  const priorityEntries = Object.entries(stats.tasks_by_priority);
+  const priorityMeta = {
+    low: { icon: '↓', label: 'Low' },
+    medium: { icon: '→', label: 'Medium' },
+    high: { icon: '↗', label: 'High' },
+    urgent: { icon: '↑', label: 'Urgent' },
+  };
+  const appBarConfig = {
+    title: 'Dashboard',
+    subtitle: 'Track your momentum',
+    actions: [{ href: '/search', icon: 'search', label: 'Search tasks' }],
+  };
+  const fabConfig = {
+    href: '/tasks/new',
+    label: 'Add new task',
+  };
+%>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <div class="min-h-screen bg-md-background text-md-on-background">
+      <%- include('../partials/top-app-bar') %>
+
+      <main role="main" class="mx-auto min-h-screen w-full max-w-md px-4 pb-28 pt-20 sm:max-w-4xl">
+        <section class="relative mb-4 overflow-hidden rounded-md-large bg-md-primary-container p-4 text-md-on-primary-container shadow-sm">
+          <div class="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/20 blur-2xl"></div>
+          <div class="absolute bottom-0 right-10 h-20 w-20 rounded-full bg-md-secondary-container/40 blur-xl"></div>
+          <div class="relative">
+            <p class="text-md-label-large uppercase tracking-[0.12em]"><%= greeting %></p>
+            <h1 class="mt-2 text-md-headline-small text-md-on-primary-container"><%= currentUser?.name || 'Planner' %></h1>
+            <p class="mt-2 max-w-[16rem] text-md-body-medium text-md-on-primary-container/90">
+              Tasks, momentum, and what needs attention today.
+            </p>
+            <div class="mt-4 flex flex-wrap gap-2">
+              <span class="touch-target inline-flex rounded-md-full bg-white/20 px-3 py-1 text-md-label-medium text-md-on-primary-container">
+                <%= stats.completion_rate %>% 30-day completion
+              </span>
+              <span class="touch-target inline-flex rounded-md-full bg-white/20 px-3 py-1 text-md-label-medium text-md-on-primary-container">
+                <%= stats.longest_streak %> day streak
+              </span>
+            </div>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-2 gap-3">
+          <% statCards.forEach((card) => { %>
+            <article class="rounded-md-medium border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+              <p class="text-md-label-medium text-md-on-surface-variant"><%= card.label %></p>
+              <p class="mt-2 text-md-display-small text-md-on-surface"><%= card.value %></p>
+            </article>
+          <% }) %>
+        </section>
+
+        <section class="mt-5 grid gap-4 sm:grid-cols-[1.15fr_0.85fr]">
+          <article class="rounded-md-large border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="text-md-title-medium text-md-on-surface">Daily completions</p>
+                <p class="mt-1 text-md-body-small text-md-on-surface-variant">Last 7 days</p>
+              </div>
+              <p class="text-md-label-large text-md-primary"><%= stats.avg_completion_time_hours %>h avg finish</p>
+            </div>
+
+            <span class="sr-only">Task completion chart: <%= stats.completion_rate %>% complete over the last 30 days.</span>
+            <svg viewBox="0 0 280 96" class="mt-4 h-28 w-full overflow-visible">
+              <% stats.daily_completions.forEach((entry, index) => { %>
+                <% const barWidth = 24; %>
+                <% const gap = 16; %>
+                <% const x = 8 + (index * (barWidth + gap)); %>
+                <% const barHeight = Math.max((entry.count / sparklineMax) * 64, entry.count > 0 ? 6 : 2); %>
+                <% const y = 74 - barHeight; %>
+                <rect x="<%= x %>" y="<%= y %>" width="<%= barWidth %>" height="<%= barHeight %>" rx="8" fill="var(--md-primary)"></rect>
+                <text x="<%= x + (barWidth / 2) %>" y="92" text-anchor="middle" font-size="10" fill="var(--md-on-surface-variant)">
+                  <%= entry.date.slice(5) %>
+                </text>
+              <% }) %>
+            </svg>
+          </article>
+
+          <article class="rounded-md-large border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+            <p class="text-md-title-medium text-md-on-surface">Priority split</p>
+            <div class="mt-4 space-y-3">
+              <% priorityEntries.forEach(([priority, count]) => { %>
+                <div class="flex items-center justify-between gap-3">
+                  <span class="text-md-label-medium text-md-on-surface-variant"><%= priority.charAt(0).toUpperCase() + priority.slice(1) %></span>
+                  <span class="text-md-title-medium text-md-on-surface"><%= count %></span>
+                </div>
+              <% }) %>
+            </div>
+          </article>
+        </section>
+
+        <section class="mt-5 rounded-md-large border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <p class="text-md-title-medium text-md-on-surface">Category breakdown</p>
+              <p class="mt-1 text-md-body-small text-md-on-surface-variant">Share of categorized tasks</p>
+            </div>
+          </div>
+
+          <% if (stats.tasks_by_category.length === 0) { %>
+            <p class="mt-4 text-md-body-medium text-md-on-surface-variant">No categorized tasks yet.</p>
+          <% } else { %>
+            <span class="sr-only">Category breakdown chart showing task distribution by category.</span>
+            <svg viewBox="0 0 320 <%= stats.tasks_by_category.length * 34 + 10 %>" class="mt-4 w-full">
+              <% stats.tasks_by_category.forEach((entry, index) => { %>
+                <% const y = 8 + (index * 34); %>
+                <% const width = Math.max((entry.count / categoryTotal) * 210, 10); %>
+                <% const percentage = Math.round((entry.count / categoryTotal) * 100); %>
+                <text x="0" y="<%= y + 12 %>" font-size="12" fill="var(--md-on-surface)"><%= entry.category_name %></text>
+                <rect x="0" y="<%= y + 18 %>" width="240" height="10" rx="5" fill="var(--md-surface-variant)"></rect>
+                <rect x="0" y="<%= y + 18 %>" width="<%= width %>" height="10" rx="5" fill="<%= entry.color %>"></rect>
+                <text x="250" y="<%= y + 27 %>" font-size="12" fill="var(--md-on-surface-variant)"><%= percentage %>%</text>
+                <text x="292" y="<%= y + 27 %>" font-size="12" fill="var(--md-on-surface)"><%= entry.count %></text>
+              <% }) %>
+            </svg>
+          <% } %>
+        </section>
+
+        <section class="mt-5 rounded-md-large border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+          <div class="flex items-center justify-between gap-3">
+            <div>
+              <p class="text-md-title-medium text-md-on-surface">Due today</p>
+              <p class="mt-1 text-md-body-small text-md-on-surface-variant">First five tasks on today’s horizon</p>
+            </div>
+            <a href="/tasks?filter=today" class="touch-target inline-flex items-center justify-center rounded-md-full px-3 text-md-label-large text-md-primary">See all</a>
+          </div>
+
+          <div class="mt-4 space-y-3">
+            <% if (dueTodayTasks.length === 0) { %>
+              <p class="text-md-body-medium text-md-on-surface-variant">Nothing due today.</p>
+            <% } %>
+
+            <% dueTodayTasks.forEach((task) => { %>
+              <a href="/tasks/<%= task.id %>" class="flex items-start justify-between gap-3 rounded-md-medium bg-md-background px-4 py-3 transition-colors hover:bg-md-surface-variant/40">
+                <div class="min-w-0 flex-1">
+                  <p class="truncate text-md-title-medium text-md-on-surface"><%= task.title %></p>
+                  <p class="mt-1 text-md-body-small text-md-on-surface-variant">
+                    <%= task.due_date || 'No due date' %>
+                    <% if (task.primary_category_name) { %>
+                      · <%= task.primary_category_name %>
+                    <% } %>
+                  </p>
+                </div>
+                <span class="touch-target inline-flex items-center gap-1.5 rounded-md-full px-3 py-1 text-md-label-medium <%= task.priority === 'urgent' ? 'bg-md-error-container text-md-on-error-container' : task.priority === 'high' ? 'bg-md-primary-container text-md-on-primary-container' : task.priority === 'medium' ? 'bg-md-tertiary-container text-md-on-tertiary-container' : 'bg-md-secondary-container text-md-on-secondary-container' %>">
+                  <span aria-hidden="true"><%= priorityMeta[task.priority]?.icon || '•' %></span>
+                  <span><%= priorityMeta[task.priority]?.label || task.priority %></span>
+                </span>
+              </a>
+            <% }) %>
+          </div>
+        </section>
+      </main>
+
+      <%- include('../partials/bottom-nav') %>
+      <%- include('../partials/toast-container') %>
+      <%- include('../partials/fab') %>
+    </div>
+  </body>
+</html>

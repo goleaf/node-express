@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<%
+  const safeCurrentUser = typeof currentUser === 'undefined' ? null : currentUser;
+  const renderViteAssets = typeof viteAssets === 'function' ? viteAssets : () => '';
+%>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- renderViteAssets() %>
+  </head>
+  <body data-theme="<%= safeCurrentUser?.theme_preference || 'system' %>" data-default-priority="<%= safeCurrentUser?.default_priority || 'medium' %>" data-default-view="<%= safeCurrentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <main class="mx-auto flex min-h-screen w-full max-w-md items-center px-md-4 py-md-6">
+      <section class="w-full rounded-md-extra-large bg-md-error-container p-md-6 text-md-on-error-container shadow-sm ring-1 ring-md-outline-variant/60">
+        <p class="text-md-label-large uppercase tracking-[0.12em]">Error <%= statusCode %></p>
+        <h1 class="mt-md-3 text-md-headline-small"><%= title %></h1>
+        <p class="mt-md-3 text-md-body-medium"><%= message %></p>
+        <div class="mt-md-6 flex flex-col gap-md-3 sm:flex-row">
+          <a class="inline-flex items-center justify-center rounded-md-full bg-md-error px-md-5 py-md-3 text-md-label-large text-md-on-error" href="/dashboard">
+            Return to dashboard
+          </a>
+          <a class="inline-flex items-center justify-center rounded-md-full border border-md-outline px-md-5 py-md-3 text-md-label-large text-md-on-error-container" href="/tasks">
+            Open tasks
+          </a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

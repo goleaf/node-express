@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <main role="main" data-onboarding-page class="animate-onboarding-enter mx-auto flex min-h-screen w-full max-w-md flex-col justify-between bg-md-background px-6 py-8 sm:max-w-lg">
+      <div>
+        <%- include('./partials/progress-dots', { currentStep }) %>
+        <div class="mt-8">
+          <p class="text-md-headline-small text-md-on-background">Start with one task</p>
+          <p class="mt-2 text-md-body-large text-md-on-surface-variant">Keep it simple. Pick a title and set the priority you usually need first.</p>
+        </div>
+
+        <section class="mt-8 space-y-5 rounded-md-extra-large bg-md-surface p-5 shadow-sm ring-1 ring-md-outline-variant/60">
+          <div>
+            <label for="onboarding-task-title" class="mb-2 block text-md-label-large text-md-on-surface">Task title</label>
+            <input id="onboarding-task-title" data-onboarding-task-title type="text" placeholder="Plan the week" class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+          </div>
+
+          <div>
+            <label for="onboarding-task-priority" class="mb-2 block text-md-label-large text-md-on-surface">Priority</label>
+            <select id="onboarding-task-priority" data-onboarding-task-priority class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="mt-6">
+          <p class="text-md-title-medium text-md-on-background">Live preview</p>
+          <article class="mt-3 rounded-md-medium border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+            <div class="flex items-start gap-3">
+              <span class="touch-target rounded-md-full border border-md-outline text-md-on-surface-variant" aria-hidden="true">
+                <svg viewBox="0 0 24 24" class="h-4 w-4 fill-none stroke-current" stroke-width="2">
+                  <circle cx="12" cy="12" r="8"></circle>
+                </svg>
+              </span>
+              <div class="min-w-0 flex-1">
+                <p data-onboarding-preview-title class="truncate text-md-title-medium text-md-on-surface">Plan the week</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <span data-onboarding-preview-priority class="touch-target inline-flex items-center gap-1.5 rounded-md-full bg-md-tertiary-container px-3 py-1 text-md-label-medium text-md-on-tertiary-container">
+                    <span data-onboarding-preview-priority-icon aria-hidden="true">→</span>
+                    <span data-onboarding-preview-priority-label>Medium</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+
+      <div class="mt-8 flex items-center justify-between gap-3">
+        <a href="/onboarding" data-onboarding-link class="text-md-label-large text-md-on-surface-variant">Back</a>
+        <a href="/onboarding/step-3" data-onboarding-link class="inline-flex items-center justify-center rounded-md-full bg-md-primary px-6 py-4 text-md-label-large text-md-on-primary">Continue</a>
+      </div>
+    </main>
+  </body>
+</html>

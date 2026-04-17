@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <main class="mx-auto flex min-h-screen w-full max-w-md items-center px-md-4 py-md-6">
+      <section class="w-full rounded-md-extra-large bg-md-surface p-md-6 shadow-sm ring-1 ring-md-outline-variant/60">
+        <p class="text-md-label-large uppercase tracking-[0.12em] text-md-primary">Session</p>
+        <h1 class="mt-md-3 text-md-headline-small">Log out</h1>
+        <p class="mt-md-2 text-md-body-medium text-md-on-surface-variant">
+          <% if (currentUser) { %>
+            You are signed in as <span class="font-medium text-md-on-surface"><%= currentUser.name %></span>.
+          <% } else { %>
+            You do not have an active session, but you can still return to the login screen.
+          <% } %>
+        </p>
+
+        <form class="mt-md-5 space-y-md-4" method="post" action="/auth/logout">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+          <button class="w-full rounded-md-full bg-md-primary px-md-4 py-md-3 text-md-label-large text-md-on-primary" type="submit">
+            Log out now
+          </button>
+        </form>
+
+        <div class="mt-md-5 text-md-body-medium text-md-on-surface-variant">
+          <a class="text-md-primary" href="/dashboard">Back to dashboard</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

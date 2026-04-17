@@ -1,0 +1,138 @@
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  avatar TEXT,
+  theme_preference TEXT NOT NULL DEFAULT 'system',
+  default_priority TEXT NOT NULL DEFAULT 'medium',
+  default_view TEXT NOT NULL DEFAULT 'list',
+  onboarding_completed INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  priority TEXT NOT NULL DEFAULT 'medium',
+  status TEXT NOT NULL DEFAULT 'pending',
+  completed_at INTEGER,
+  due_date TEXT,
+  reminder_at TEXT,
+  position INTEGER NOT NULL DEFAULT 0,
+  reminder_job_id TEXT,
+  deleted_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS subtasks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  is_completed INTEGER NOT NULL DEFAULT 0,
+  position INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS categories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT,
+  icon TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (user_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS task_categories (
+  task_id INTEGER NOT NULL,
+  category_id INTEGER NOT NULL,
+  PRIMARY KEY (task_id, category_id),
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS tags (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  color TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  UNIQUE (user_id, name)
+);
+
+CREATE TABLE IF NOT EXISTS task_tags (
+  task_id INTEGER NOT NULL,
+  tag_id INTEGER NOT NULL,
+  PRIMARY KEY (task_id, tag_id),
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+  FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS attachments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  task_id INTEGER NOT NULL,
+  file_path TEXT NOT NULL,
+  file_name TEXT NOT NULL,
+  file_type TEXT,
+  file_size INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL,
+  data TEXT NOT NULL DEFAULT '{}',
+  read_at TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  email TEXT NOT NULL,
+  ip_address TEXT NOT NULL,
+  attempted_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  event_name TEXT NOT NULL,
+  payload TEXT NOT NULL DEFAULT '{}',
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
+CREATE INDEX IF NOT EXISTS idx_subtasks_task_id ON subtasks(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_categories_task_id ON task_categories(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_tags_task_id ON task_tags(task_id);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user_id ON password_resets(user_id);
+CREATE INDEX IF NOT EXISTS idx_password_resets_expires_at ON password_resets(expires_at);

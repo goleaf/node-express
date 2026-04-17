@@ -1,0 +1,150 @@
+<%
+  const priorityMeta = {
+    low: { icon: '↓', label: 'Low' },
+    medium: { icon: '→', label: 'Medium' },
+    high: { icon: '↗', label: 'High' },
+    urgent: { icon: '↑', label: 'Urgent' },
+  };
+%>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <% const completionPercentage = task.subtask_count > 0 ? Math.round((task.completed_subtask_count / task.subtask_count) * 100) : 0; %>
+    <main
+      role="main"
+      data-task-detail-page
+      data-task-id="<%= task.id %>"
+      class="mx-auto min-h-screen w-full max-w-md px-md-4 py-md-6 sm:max-w-4xl"
+    >
+      <header class="rounded-md-extra-large bg-md-primary-container p-md-6 text-md-on-primary-container shadow-sm">
+        <div class="flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-md-label-large uppercase tracking-[0.12em]">Task Detail</p>
+            <h1 class="mt-md-3 text-md-headline-medium"><%= task.title %></h1>
+            <p class="mt-md-2 text-md-body-medium text-md-on-surface-variant"><%= task.description || 'No description provided.' %></p>
+          </div>
+          <a href="/tasks/<%= task.id %>/edit" class="touch-target rounded-md-full bg-md-surface px-md-4 py-md-2 text-md-label-large text-md-on-surface">Edit</a>
+        </div>
+      </header>
+
+      <section class="mt-md-5 grid gap-md-4 sm:grid-cols-2">
+        <article class="rounded-md-extra-large bg-md-surface p-md-5 shadow-sm ring-1 ring-md-outline-variant/60">
+          <p class="text-md-title-medium text-md-on-surface">Status</p>
+          <div class="mt-md-3 flex flex-wrap gap-md-2">
+            <span class="touch-target inline-flex rounded-md-full bg-md-secondary-container px-md-3 py-md-2 text-md-label-medium text-md-on-secondary-container"><%= task.status %></span>
+            <span class="touch-target inline-flex items-center gap-1.5 rounded-md-full bg-md-tertiary-container px-md-3 py-md-2 text-md-label-medium text-md-on-tertiary-container">
+              <span aria-hidden="true"><%= priorityMeta[task.priority]?.icon || '•' %></span>
+              <span><%= priorityMeta[task.priority]?.label || task.priority %></span>
+            </span>
+            <% if (task.due_date) { %>
+              <span class="touch-target inline-flex rounded-md-full bg-md-surface-variant px-md-3 py-md-2 text-md-label-medium text-md-on-surface-variant">Due: <%= task.due_date %></span>
+            <% } %>
+          </div>
+        </article>
+
+        <article class="rounded-md-extra-large bg-md-surface p-md-5 shadow-sm ring-1 ring-md-outline-variant/60">
+          <p class="text-md-title-medium text-md-on-surface">Progress</p>
+          <p data-progress-summary class="mt-md-3 text-md-body-large text-md-on-surface"><%= task.completed_subtask_count %> of <%= task.subtask_count %> subtasks complete</p>
+          <div class="mt-md-3 h-2 w-full rounded-full bg-md-surface-variant">
+            <div
+              data-progress-bar
+              class="h-2 rounded-full bg-md-primary transition-all duration-300 [transition-timing-function:cubic-bezier(0.2,0,0,1)]"
+              style="width: <%= completionPercentage %>%"
+            ></div>
+          </div>
+          <span class="sr-only"><%= task.completed_subtask_count %> of <%= task.subtask_count %> subtasks completed</span>
+        </article>
+      </section>
+
+      <section class="mt-md-5 grid gap-md-4 sm:grid-cols-3">
+        <article class="rounded-md-extra-large bg-md-surface p-md-5 shadow-sm ring-1 ring-md-outline-variant/60 sm:col-span-2">
+          <div class="flex items-center justify-between gap-3">
+            <p class="text-md-title-medium text-md-on-surface">Subtasks</p>
+            <p class="text-md-body-small text-md-on-surface-variant">Drag to reorder</p>
+          </div>
+
+          <form data-subtask-create-form class="mt-md-4 flex items-center gap-2">
+            <input
+              data-subtask-create-input
+              type="text"
+              placeholder="Add a subtask"
+              class="w-full rounded-md-small border border-md-outline bg-transparent px-md-4 py-md-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+            >
+            <button type="submit" class="touch-target rounded-md-full bg-md-primary px-md-4 py-md-3 text-md-label-large text-md-on-primary">Add</button>
+          </form>
+
+          <div data-subtask-list class="mt-md-4 space-y-md-2">
+            <% task.subtasks.forEach((subtask) => { %>
+              <article
+                data-subtask-item
+                data-subtask-id="<%= subtask.id %>"
+                data-position="<%= subtask.position %>"
+                data-completed="<%= subtask.is_completed ? 'true' : 'false' %>"
+                draggable="true"
+                class="flex items-center gap-3 rounded-md-large border border-md-outline-variant bg-md-surface p-md-3 shadow-sm <%= subtask.is_completed ? 'bg-md-primary-container/35' : '' %>"
+                <button
+                  type="button"
+                  class="touch-target cursor-grab rounded-md-full text-md-on-surface-variant"
+                  aria-label="Drag to reorder"
+                >
+                  <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                    <path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01" stroke-linecap="round" />
+                  </svg>
+                </button>
+                <label class="touch-target rounded-md-full">
+                  <input data-subtask-toggle aria-label="Mark <%= subtask.title %> as complete" type="checkbox" class="h-5 w-5 rounded border-md-outline text-md-primary" <%= subtask.is_completed ? 'checked' : '' %>>
+                </label>
+                <input
+                  data-subtask-title-input
+                  type="text"
+                  value="<%= subtask.title %>"
+                  class="min-w-0 flex-1 bg-transparent text-md-body-large text-md-on-surface outline-none <%= subtask.is_completed ? 'line-through text-md-on-surface-variant' : '' %>"
+                  data-previous-value="<%= subtask.title %>"
+                >
+                <button
+                  type="button"
+                  data-subtask-delete
+                  class="touch-target rounded-md-full text-md-error"
+                  aria-label="Delete subtask"
+                >
+                  <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                    <path d="M4 7h16" stroke-linecap="round" />
+                    <path d="M9 7V5h6v2" stroke-linecap="round" stroke-linejoin="round" />
+                    <path d="M7 7l1 12h8l1-12" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </button>
+              </article>
+            <% }) %>
+          </div>
+
+          <p data-subtask-empty class="mt-md-3 text-md-body-medium text-md-on-surface-variant <%= task.subtasks.length === 0 ? '' : 'hidden' %>">
+            No subtasks yet.
+          </p>
+        </article>
+
+        <article class="rounded-md-extra-large bg-md-surface p-md-5 shadow-sm ring-1 ring-md-outline-variant/60">
+          <p class="text-md-title-medium text-md-on-surface">Labels</p>
+          <div class="mt-md-3 flex flex-wrap gap-md-2">
+            <% task.categories.forEach((category) => { %>
+              <span class="touch-target inline-flex rounded-md-full bg-md-secondary-container px-md-3 py-md-2 text-md-label-medium text-md-on-secondary-container"><%= category.name %></span>
+            <% }) %>
+            <% task.tags.forEach((tag) => { %>
+              <span class="touch-target inline-flex rounded-md-full bg-md-tertiary-container px-md-3 py-md-2 text-md-label-medium text-md-on-tertiary-container"><%= tag.name %></span>
+            <% }) %>
+            <% if (task.categories.length === 0 && task.tags.length === 0) { %>
+              <p class="text-md-body-medium text-md-on-surface-variant">No categories or tags assigned.</p>
+            <% } %>
+          </div>
+        </article>
+      </section>
+    </main>
+  </body>
+</html>

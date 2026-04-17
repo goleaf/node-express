@@ -1,0 +1,174 @@
+<%
+  const serialize = (value) => JSON.stringify(value).replace(/</g, '\\u003c');
+  const formatLabel = (value) => value.replaceAll('_', ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+  const priorityMeta = {
+    low: { icon: '↓', label: 'Low' },
+    medium: { icon: '→', label: 'Medium' },
+    high: { icon: '↗', label: 'High' },
+    urgent: { icon: '↑', label: 'Urgent' },
+  };
+  const renderTaskCard = (task) => {
+    const priorityClasses = {
+      low: 'bg-md-secondary-container text-md-on-secondary-container',
+      medium: 'bg-md-tertiary-container text-md-on-tertiary-container',
+      high: 'bg-md-primary-container text-md-on-primary-container',
+      urgent: 'bg-md-error-container text-md-on-error-container',
+    };
+
+    return `
+      <article class="rounded-md-medium border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0 flex-1">
+            <a href="/tasks/${task.id}" class="block truncate text-md-title-medium text-md-on-surface">${task.title}</a>
+            ${task.description ? `<p class="mt-1 line-clamp-2 text-md-body-small text-md-on-surface-variant">${task.description}</p>` : ''}
+          </div>
+          <span class="touch-target inline-flex items-center gap-1.5 rounded-md-full px-3 py-1 text-md-label-medium ${priorityClasses[task.priority] || priorityClasses.medium}">
+            <span aria-hidden="true">${priorityMeta[task.priority]?.icon || '•'}</span>
+            <span>${priorityMeta[task.priority]?.label || formatLabel(task.priority)}</span>
+          </span>
+        </div>
+        <div class="mt-3 flex flex-wrap gap-2">
+          <span class="touch-target inline-flex rounded-md-full border border-md-outline px-3 py-1 text-md-label-medium text-md-on-surface-variant">
+            ${formatLabel(task.status)}
+          </span>
+          ${task.due_date ? `<span class="touch-target inline-flex rounded-md-full border border-md-outline px-3 py-1 text-md-label-medium text-md-on-surface-variant">${task.due_date}</span>` : ''}
+          ${task.categories.map((category) => `<span class="touch-target inline-flex rounded-md-full border px-3 py-1 text-md-label-medium" style="--category-color:${category.color};--category-color-bg:${category.color}20;--category-color-border:${category.color}66;background-color:var(--category-color-bg);color:var(--category-color);border-color:var(--category-color-border);">${category.name}</span>`).join('')}
+          ${task.tags.map((tag) => `<span class="touch-target inline-flex rounded-md-full border px-3 py-1 text-md-label-medium" style="--tag-color:${tag.color || '#6750A4'};--tag-color-bg:${tag.color || '#6750A4'}20;--tag-color-border:${tag.color || '#6750A4'}66;background-color:var(--tag-color-bg);color:var(--tag-color);border-color:var(--tag-color-border);">${tag.name}</span>`).join('')}
+        </div>
+      </article>
+    `;
+  };
+  const appBarConfig = {
+    title: 'Search tasks',
+    subtitle: 'Find by text, state, date, and labels',
+    showBack: true,
+    backHref: '/tasks',
+  };
+%>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <%- include('../partials/top-app-bar') %>
+    <div data-search-page data-search-endpoint="/api/tasks/search" class="min-h-screen">
+      <main role="main" class="mx-auto max-w-md px-4 pb-28 pt-20 sm:max-w-4xl">
+        <section class="rounded-md-large border border-md-outline-variant bg-md-surface p-4 shadow-sm">
+          <div class="relative">
+            <input
+              data-search-input
+              type="search"
+              name="query"
+              value="<%= initialFilters.query %>"
+              placeholder="Search title or description"
+              aria-label="Search tasks"
+              class="w-full rounded-md-full border border-md-outline bg-md-background px-12 py-3 text-md-body-large text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+              autocomplete="off"
+            >
+            <span class="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-md-on-surface-variant">
+              <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="1.8">
+                <path d="M11 5a6 6 0 1 1 0 12 6 6 0 0 1 0-12z" />
+                <path d="M20 20l-4.2-4.2" stroke-linecap="round" />
+              </svg>
+            </span>
+          </div>
+
+          <div data-recent-searches class="mt-3 hidden rounded-md-medium border border-md-outline-variant bg-md-background p-3">
+            <p class="mb-2 text-md-label-large text-md-on-surface">Recent searches</p>
+            <div data-recent-searches-list class="flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">Status</span>
+              <select data-filter-input="filter_status" aria-label="Filter by status" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+                <option value="">Any status</option>
+                <% ['pending', 'in_progress', 'completed', 'cancelled'].forEach((value) => { %>
+                  <option value="<%= value %>" <%= initialFilters.filter_status === value ? 'selected' : '' %>><%= formatLabel(value) %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">Priority</span>
+              <select data-filter-input="filter_priority" aria-label="Filter by priority" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+                <option value="">Any priority</option>
+                <% ['low', 'medium', 'high', 'urgent'].forEach((value) => { %>
+                  <option value="<%= value %>" <%= initialFilters.filter_priority === value ? 'selected' : '' %>><%= formatLabel(value) %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">Category</span>
+              <select data-filter-input="filter_category_id" aria-label="Filter by category" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+                <option value="">Any category</option>
+                <% categories.forEach((category) => { %>
+                  <option value="<%= category.id %>" <%= String(initialFilters.filter_category_id) === String(category.id) ? 'selected' : '' %>><%= category.name %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">Tag</span>
+              <select data-filter-input="filter_tag_id" aria-label="Filter by tag" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+                <option value="">Any tag</option>
+                <% tags.forEach((tag) => { %>
+                  <option value="<%= tag.id %>" <%= String(initialFilters.filter_tag_id) === String(tag.id) ? 'selected' : '' %>><%= tag.name %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">From</span>
+              <input data-filter-input="date_from" type="date" value="<%= initialFilters.date_from %>" aria-label="Filter from date" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">To</span>
+              <input data-filter-input="date_to" type="date" value="<%= initialFilters.date_to %>" aria-label="Filter to date" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">Sort by</span>
+              <select data-filter-input="sort_by" aria-label="Sort by" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+                <% ['position', 'due_date', 'priority', 'created_at', 'title'].forEach((value) => { %>
+                  <option value="<%= value %>" <%= initialFilters.sort_by === value ? 'selected' : '' %>><%= formatLabel(value) %></option>
+                <% }) %>
+              </select>
+            </label>
+            <label class="block">
+              <span class="mb-2 block text-md-label-large text-md-on-surface">Order</span>
+              <select data-filter-input="sort_direction" aria-label="Sort direction" class="w-full rounded-md-small border border-md-outline bg-transparent px-3 py-3 text-md-on-surface">
+                <% ['asc', 'desc'].forEach((value) => { %>
+                  <option value="<%= value %>" <%= initialFilters.sort_direction === value ? 'selected' : '' %>><%= value.toUpperCase() %></option>
+                <% }) %>
+              </select>
+            </label>
+          </div>
+        </section>
+
+        <section class="mt-4">
+          <div class="flex items-center justify-between gap-3">
+            <p data-results-count class="text-md-title-medium text-md-on-surface"><%= searchResult.total %> results</p>
+            <a href="/tasks" class="touch-target inline-flex items-center justify-center rounded-md-full px-3 text-md-label-large text-md-primary">Back to list</a>
+          </div>
+          <div data-active-filter-chips class="mt-3 flex flex-wrap gap-2"></div>
+        </section>
+
+        <section data-search-results class="mt-4 space-y-3">
+          <% if (searchResult.tasks.length === 0) { %>
+            <%- include('../partials/empty-search') %>
+          <% } else { %>
+            <%- searchResult.tasks.map(renderTaskCard).join('') %>
+          <% } %>
+        </section>
+      </main>
+
+      <script type="application/json" data-categories-json><%- serialize(categories) %></script>
+      <script type="application/json" data-tags-json><%- serialize(tags) %></script>
+    </div>
+    <%- include('../partials/bottom-nav') %>
+    <%- include('../partials/toast-container') %>
+  </body>
+</html>

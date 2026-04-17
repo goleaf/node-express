@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body
+    data-theme="<%= currentUser?.theme_preference || 'system' %>"
+    data-default-priority="<%= currentUser?.default_priority || 'medium' %>"
+    data-default-view="<%= currentUser?.default_view || 'list' %>"
+    class="bg-md-background text-md-on-background"
+  >
+    <div class="min-h-screen bg-md-background text-md-on-background">
+      <%- include('../partials/top-app-bar') %>
+      <main role="main" class="min-h-screen pb-20 pt-16">
+        <%- body %>
+      </main>
+      <%- include('../partials/bottom-nav') %>
+      <%- include('../partials/toast-container') %>
+      <%- include('../partials/fab') %>
+    </div>
+  </body>
+</html>

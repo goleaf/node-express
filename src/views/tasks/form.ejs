@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<%= csrfToken %>">
+    <title><%= title %> · Todo</title>
+    <%- include('../partials/theme-bootstrap') %>
+    <%- viteAssets() %>
+  </head>
+  <body data-theme="<%= currentUser?.theme_preference || 'system' %>" data-default-priority="<%= currentUser?.default_priority || 'medium' %>" data-default-view="<%= currentUser?.default_view || 'list' %>" class="bg-md-background text-md-on-background">
+    <% const selectedCategoryIds = new Set((task?.categories || []).map((category) => Number(category.id))); %>
+    <% const selectedTagIds = new Set((task?.tags || []).map((tag) => Number(tag.id))); %>
+    <% const priority = task?.priority || 'medium'; %>
+    <% const status = task?.status || 'pending'; %>
+    <div
+      data-task-form-page
+      data-mode="<%= formMode %>"
+      <% if (task?.id) { %>data-task-id="<%= task.id %>"<% } %>
+      class="min-h-screen bg-md-background"
+    >
+      <div class="mx-auto flex min-h-screen w-full max-w-md flex-col bg-md-surface shadow-xl sm:max-w-lg">
+        <header class="sticky top-0 z-20 bg-md-surface px-4 pb-4 pt-3">
+          <div class="mx-auto mt-3 h-1 w-12 rounded-full bg-md-outline-variant"></div>
+          <div class="mt-4 flex items-center justify-between gap-4">
+            <div>
+              <p class="text-md-title-large text-md-on-surface"><%= formMode === 'edit' ? 'Edit task' : 'New task' %></p>
+              <p class="text-md-body-small text-md-on-surface-variant">Capture what matters and keep the details lightweight.</p>
+            </div>
+            <a href="<%= task?.id ? `/tasks/${task.id}` : '/tasks' %>" class="touch-target rounded-md-full text-md-on-surface-variant" aria-label="Close">
+              <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="2">
+                <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+              </svg>
+            </a>
+          </div>
+        </header>
+
+        <form data-task-form class="flex flex-1 flex-col">
+          <input type="hidden" name="status" value="<%= status %>">
+
+          <div class="flex-1 space-y-5 overflow-y-auto px-4 pb-6 pt-2">
+            <section>
+              <label for="task-title" class="mb-2 block text-md-label-large text-md-on-surface">Title</label>
+              <input
+                id="task-title"
+                name="title"
+                type="text"
+                value="<%= task?.title || '' %>"
+                class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+                autocomplete="off"
+              >
+              <p data-error-for="title" class="mt-1 hidden text-md-body-small text-md-error"></p>
+            </section>
+
+            <section>
+              <label for="task-description" class="mb-2 block text-md-label-large text-md-on-surface">Description</label>
+              <textarea
+                id="task-description"
+                name="description"
+                rows="3"
+                class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+              ><%= task?.description || '' %></textarea>
+              <p data-error-for="description" class="mt-1 hidden text-md-body-small text-md-error"></p>
+            </section>
+
+            <section>
+              <p class="mb-2 text-md-label-large text-md-on-surface">Priority</p>
+              <div class="overflow-hidden rounded-md-extra-small border border-md-outline">
+                <div class="flex">
+                  <% ['low', 'medium', 'high', 'urgent'].forEach((option) => { %>
+                    <% const isActive = priority === option; %>
+                    <button
+                      type="button"
+                      data-priority-segment
+                      data-value="<%= option %>"
+                      class="touch-target flex-1 py-2 text-center text-md-label-large <%= isActive ? 'bg-md-secondary-container text-md-on-secondary-container' : 'bg-transparent text-md-on-surface-variant' %>"
+                    >
+                      <%= option.charAt(0).toUpperCase() + option.slice(1) %>
+                    </button>
+                  <% }) %>
+                </div>
+              </div>
+              <input type="hidden" name="priority" value="<%= priority %>">
+              <p data-error-for="priority" class="mt-1 hidden text-md-body-small text-md-error"></p>
+            </section>
+
+            <section>
+              <label for="task-due-date" class="mb-2 block text-md-label-large text-md-on-surface">Due date</label>
+              <input
+                id="task-due-date"
+                name="due_date"
+                type="date"
+                value="<%= task?.due_date ? String(task.due_date).slice(0, 10) : '' %>"
+                class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+              >
+              <p data-date-display class="mt-2 text-md-body-small text-md-on-surface-variant"></p>
+              <p data-error-for="due_date" class="mt-1 hidden text-md-body-small text-md-error"></p>
+            </section>
+
+            <section>
+              <p class="mb-2 text-md-label-large text-md-on-surface">Categories</p>
+              <div class="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <% categories.forEach((category) => { %>
+                  <% const selected = selectedCategoryIds.has(Number(category.id)); %>
+                  <button
+                    type="button"
+                    data-category-chip
+                    data-category-id="<%= category.id %>"
+                    aria-pressed="<%= selected ? 'true' : 'false' %>"
+                    class="touch-target shrink-0 rounded-md-full border px-4 py-2 text-md-label-large <%= selected ? 'border-transparent bg-md-primary-container text-md-on-primary-container' : 'border-md-outline text-md-on-surface-variant' %>"
+                  >
+                    <%= category.name %>
+                  </button>
+                <% }) %>
+              </div>
+              <p data-error-for="category_ids" class="mt-1 hidden text-md-body-small text-md-error"></p>
+            </section>
+
+            <section>
+              <p class="mb-2 text-md-label-large text-md-on-surface">Tags</p>
+              <div class="flex gap-2 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <% tags.forEach((tag) => { %>
+                  <% const selected = selectedTagIds.has(Number(tag.id)); %>
+                  <button
+                    type="button"
+                    data-tag-chip
+                    data-tag-id="<%= tag.id %>"
+                    aria-pressed="<%= selected ? 'true' : 'false' %>"
+                    class="touch-target shrink-0 rounded-md-full border px-4 py-2 text-md-label-large <%= selected ? 'border-transparent bg-md-primary-container text-md-on-primary-container' : 'border-md-outline text-md-on-surface-variant' %>"
+                  >
+                    <%= tag.name %>
+                  </button>
+                <% }) %>
+              </div>
+              <p data-error-for="tag_ids" class="mt-1 hidden text-md-body-small text-md-error"></p>
+            </section>
+
+            <section>
+              <div class="flex items-center justify-between gap-3">
+                <p class="text-md-label-large text-md-on-surface">Subtasks</p>
+                <button type="button" data-add-subtask class="touch-target rounded-md-full bg-md-secondary-container px-3 py-2 text-md-label-large text-md-on-secondary-container">
+                  Add row
+                </button>
+              </div>
+
+              <div data-subtasks-list class="mt-3 space-y-2">
+                <% const subtasks = task?.subtasks?.length ? task.subtasks : [{ title: '' }]; %>
+                <% subtasks.forEach((subtask, index) => { %>
+                  <div data-subtask-row class="flex items-center gap-2">
+                    <input
+                      type="text"
+                      data-subtask-input
+                      value="<%= subtask.title || '' %>"
+                      placeholder="Subtask <%= index + 1 %>"
+                      class="w-full rounded-md-extra-small border border-md-outline px-4 py-3 text-md-on-surface outline-none focus:border-2 focus:border-md-primary"
+                    >
+                    <button type="button" data-remove-subtask class="touch-target rounded-md-full text-md-on-surface-variant" aria-label="Remove subtask">
+                      <svg viewBox="0 0 24 24" class="h-5 w-5 fill-none stroke-current" stroke-width="2">
+                        <path d="M6 6l12 12M18 6L6 18" stroke-linecap="round" />
+                      </svg>
+                    </button>
+                  </div>
+                <% }) %>
+              </div>
+            </section>
+          </div>
+
+          <div class="sticky bottom-0 border-t border-md-outline-variant bg-md-surface px-4 py-4">
+            <button type="submit" class="w-full rounded-md-full bg-md-primary py-3 text-md-label-large text-md-on-primary">
+              Save task
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </body>
+</html>
