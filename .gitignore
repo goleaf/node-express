@@ -1,2 +1,6 @@
 node_modules
-/data/todos.json
+/.playwright-mcp/
+/database/*.sqlite*
+/public/dist/
+/prod-asset-requests.txt
+/prod-clean-requests.txt
